@@ -1,88 +1,112 @@
-import {themes as prismThemes} from 'prism-react-renderer';
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
+import {themes as prismThemes} from 'prism-react-renderer';
+
 const config: Config = {
-  title: 'My Site',
-  tagline: 'Dinosaurs are cool',
+  title: 'Numeraire Docs',
+  tagline: 'Numeraire Documentation Portal',
   favicon: 'img/favicon.ico',
-
-  // Set the production url of your site here
-  url: 'https://your-docusaurus-site.example.com',
-  // Set the /<baseUrl>/ pathname under which your site is served
-  // For GitHub pages deployment, it is often '/<projectName>/'
+  url: 'https://docs.numeraire.tech',
   baseUrl: '/',
-
-  // GitHub pages deployment config.
-  // If you aren't using GitHub pages, you don't need these.
-  organizationName: 'facebook', // Usually your GitHub org/user name.
-  projectName: 'docusaurus', // Usually your repo name.
-
+  organizationName: 'bitcoin-numeraire', 
+  projectName: 'numeraire-docs',
+  deploymentBranch: "gh-pages",
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
-
-  // Even if you don't use internationalization, you can use this field to set
-  // useful metadata like html lang. For example, if your site is Chinese, you
-  // may want to replace "en" with "zh-Hans".
+  trailingSlash: false,
   i18n: {
     defaultLocale: 'en',
     locales: ['en'],
   },
-
   presets: [
     [
       'classic',
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          editUrl:
-            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
+          editUrl: 'https://github.com/bitcoin-numeraire/docs/edit/main/',
+          path: "docs",
+          routeBasePath: "/",
+          include: ["**/*.md", "**/*.mdx"],
+          exclude: [
+            "**/_*.{js,jsx,ts,tsx,md,mdx}",
+            "**/_*/**",
+            "**/*.test.{js,jsx,ts,tsx}",
+            "**/__tests__/**",
+          ],
+          showLastUpdateAuthor: true,
+          showLastUpdateTime: true,
+          includeCurrentVersion: true,
         },
-        blog: {
-          showReadingTime: true,
-          feedOptions: {
-            type: ['rss', 'atom'],
-            xslt: true,
-          },
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          editUrl:
-            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
-          // Useful options to enforce blogging best practices
-          onInlineTags: 'warn',
-          onInlineAuthors: 'warn',
-          onUntruncatedBlogPosts: 'warn',
-        },
+        blog: false, // Disable blog feature
         theme: {
           customCss: './src/css/custom.css',
         },
       } satisfies Preset.Options,
     ],
   ],
-
   themeConfig: {
-    // Replace with your project's social card
-    image: 'img/docusaurus-social-card.jpg',
+    announcementBar: {
+      id: "announcement_bar",
+      content:
+        '📣 <strong><a href="https://github.com/bitcoin-numeraire/swissknife/releases/tag/v0.1.0" target="blank">Numeraire SwissKnife v0.1.0</a></strong> is out!',
+      backgroundColor: "#F2B81B",
+      textColor: "#121212",
+      isCloseable: false,
+    },
+    image: 'img/social.png',
+    metadata: [
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: "/img/social.png" },
+      { property: "og:image", content: "/img/social.png" },
+    ],
+    colorMode: {
+      defaultMode: 'dark',
+      disableSwitch: false,
+      respectPrefersColorScheme: true,
+    },
+    docs: {
+      sidebar: {
+        hideable: true,
+        autoCollapseCategories: true,
+      },
+    },
     navbar: {
-      title: 'My Site',
+      title: 'Docs',
       logo: {
-        alt: 'My Site Logo',
-        src: 'img/logo.svg',
+        alt: 'Numeraire',
+        src: 'img/logo-dark.svg',
+        srcDark: 'img/logo.svg',
       },
       items: [
         {
-          type: 'docSidebar',
-          sidebarId: 'tutorialSidebar',
-          position: 'left',
-          label: 'Tutorial',
+          type: "doc",
+          docId: "account/index",
+          position: "left",
+          label: "Account",
         },
-        {to: '/blog', label: 'Blog', position: 'left'},
         {
-          href: 'https://github.com/facebook/docusaurus',
-          label: 'GitHub',
+          href: 'https://api.numeraire.tech/docs',
+          position: "left",
+          label: "API Reference",
+        },
+        {
+          href: 'https://app.numeraire.tech',
           position: 'right',
+          label: "User Dashboard",
+        },
+        {
+          href: 'https://github.com/bitcoin-numeraire',
+          position: 'right',
+          className: 'header-github-link',
+          'aria-label': 'GitHub repository',
+        },
+        {
+          href: "https://twitter.com/NumeraireBTC",
+          className: "header-twitter-link",
+          position: "right",
+          "aria-label": "Twitter",
         },
       ],
     },
@@ -90,11 +114,19 @@ const config: Config = {
       style: 'dark',
       links: [
         {
-          title: 'Docs',
+          title: 'Links',
           items: [
             {
-              label: 'Tutorial',
-              to: '/docs/intro',
+              label: 'Numeraire Homepage',
+              href: 'https://numeraire.tech',
+            },
+            {
+              label: 'Numeraire Dashboard',
+              href: 'https://app.numeraire.tech',
+            },
+            {
+              label: 'API Reference',
+              href: 'https://api.numeraire.tech/docs',
             },
           ],
         },
@@ -102,16 +134,16 @@ const config: Config = {
           title: 'Community',
           items: [
             {
-              label: 'Stack Overflow',
-              href: 'https://stackoverflow.com/questions/tagged/docusaurus',
-            },
-            {
-              label: 'Discord',
-              href: 'https://discordapp.com/invite/docusaurus',
+              label: 'GitHub',
+              href: 'https://github.com/bitcoin-numeraire',
             },
             {
               label: 'Twitter',
-              href: 'https://twitter.com/docusaurus',
+              href: 'https://twitter.com/NumeraireBTC',
+            },
+            {
+              label: 'Nostr',
+              href: '#',
             },
           ],
         },
@@ -119,21 +151,21 @@ const config: Config = {
           title: 'More',
           items: [
             {
-              label: 'Blog',
-              to: '/blog',
+              label: 'Numeraire SwissKnife',
+              href: 'https://github.com/bitcoin-numeraire/swissknife',
             },
             {
-              label: 'GitHub',
-              href: 'https://github.com/facebook/docusaurus',
+              label: 'Contribute to our docs',
+              href: 'https://github.com/bitcoin-numeraire/doc',
             },
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} My Project, Inc. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Numeraire Technologies.`,
     },
     prism: {
       theme: prismThemes.github,
-      darkTheme: prismThemes.dracula,
+      darkTheme: prismThemes.oceanicNext,
     },
   } satisfies Preset.ThemeConfig,
 };
