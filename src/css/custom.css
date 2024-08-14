@@ -428,9 +428,8 @@
   
   .navbar__logo {
     color: var(--banner-text);
-    height: 40px;
+    height: 38px;
     width: auto;
-    padding: 0 10px 0 20px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -629,6 +628,7 @@
   }
   
   /* Footer */
+
   .footer {
     font-family: Montserrat, sans-serif;
   }
