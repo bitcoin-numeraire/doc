@@ -235,14 +235,14 @@
     
     --banner-background: #1e1e1e;
     --banner-text: #fff;
-    --banner-text-shadow: #1e1e1e;
+    --banner-text-shadow: #121212;
     --banner-button-hover: #fff;
-    --banner-button-text-hover: #1e1e1e;
+    --banner-button-text-hover: #121212;
 
-    --homepage-card-background: #1f1f1f;
+    --homepage-card-background: #212121;
     --homepage-card-text: #fff;
     --homepage-card-border-color: #505050;
-    --homepage-card-border-color-hover: #61dfff;
+    --homepage-card-border-color-hover: #F2B81B;
     --homepage-card-dot-hover: #fff;
     --homepage-card-icon: #fff;
   }
@@ -283,11 +283,11 @@
     
     --homepage-card-background: #fff;
     --homepage-card-text: #fff;
-    --homepage-card-border-color: #CC8221;
+    --homepage-card-border-color: #c0c0c0;
     --homepage-card-border-color-hover: #505050;
-    --homepage-card-dot-hover: #61dfff;
-    --homepage-card-icon: #CC8221;
-  }
+    --homepage-card-dot-hover: #CC8221;
+    --homepage-card-icon: #c0c0c0;
+    }
 
   html[data-theme="dark"] .navbar {
     background-color: #282828;
@@ -489,7 +489,8 @@
   
   /* circle icons */
   .navbar__link[href="/account"]::before,
-  .navbar__link[href="/swissknife"]::before {
+  .navbar__link[href="/swissknife"]::before,
+  .navbar__link[href="/developers"]::before {
     content: "";
     display: inline-block;
     width: 6px;
@@ -504,14 +505,16 @@
   
   /* circle hover */
   .navbar__link[href="/account"]:hover::before,
-  .navbar__link[href="/swissknife"]:hover::before {
+  .navbar__link[href="/swissknife"]:hover::before,
+  .navbar__link[href="/developers"]:hover::before {
     background-color: var(--ifm-color-primary);
     border: 1px solid var(--ifm-color-primary);
   }
   
   /* persist circle highlight when in a specific section */
   .navbar__link[href="/account"][aria-current="page"]::before,
-  .navbar__link[href="/swissknife"][aria-current="page"]::before {
+  .navbar__link[href="/swissknife"][aria-current="page"]::before,
+  .navbar__link[href="/developers"][aria-current="page"]::before {
     background-color: var(--ifm-color-primary);
     border: 1px solid var(--ifm-color-primary);
   }
@@ -521,8 +524,9 @@
       font-size: 16px;
     }
   
-    .navbar__link[href="/account§"]::before,
-    .navbar__link[href="/swissknife"]::before {
+    .navbar__link[href="/account"]::before,
+    .navbar__link[href="/swissknife"]::before,
+    .navbar__link[href="/developers"]::before {
       display: none;
     }
   }
