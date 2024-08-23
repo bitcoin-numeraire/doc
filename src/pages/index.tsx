@@ -1,23 +1,40 @@
-import clsx from 'clsx';
-import Layout from '@theme/Layout';
-import Link from '@docusaurus/Link';
-import Heading from '@theme/Heading';
-import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
-import HomepageFeatures from '@site/src/components/HomepageFeatures';
-import styles from './index.module.css';
+import React from "react";
+import clsx from "clsx";
+import Link from "@docusaurus/Link";
+import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
+import Layout from "@theme/Layout";
+import HomepageCards from "@site/src/components/HomepageCards";
+import BoltIcon from "../../static/img/icon_bolt.svg";
+import NumeraireLogo from "../../static/img/logo-dynamic.svg";
+
+import styles from "./index.module.css";
 
 function HomepageHeader() {
-  const { siteConfig } = useDocusaurusContext();
   return (
-    <header className={clsx('hero hero--primary', styles.heroBanner)}>
+    <header className={clsx(styles.introductionBlock)}>
       <div className="container">
-        <Heading as="h1" className="hero__title">
-          {siteConfig.title}
-        </Heading>
-        <p className="hero__subtitle">{siteConfig.tagline}</p>
+        <h1 className={clsx("hero__title", styles.forceColor, styles.title)}>
+          <NumeraireLogo className={styles.logo} style={{ color: 'inherit' }} />
+          Docs
+        </h1>
+        <p
+          className={clsx(
+            "hero__subtitle",
+            styles.forceColor,
+            styles.subtitle,
+          )}>
+          Your self-custodial multi-account <b>Bitcoin</b> wallet integrating <b>Lightning</b> and <b>Nostr</b>.<br/>
+          As a user, discover all the features of your account. As a developer, easily integrate Bitcoin into your app with Numeraire SwissKnife.
+        </p>
         <div className={styles.buttons}>
-          <Link className="button button--secondary button--lg" to="/docs/intro">
-            Docusaurus Tutorial - 5min ⏱️
+          <Link
+            className={clsx(
+              "button button--secondary button--lg",
+              styles.bannerButton,
+            )}
+            to="introduction">
+            Get Started
+            <BoltIcon className={styles.icon} />
           </Link>
         </div>
       </div>
@@ -27,11 +44,13 @@ function HomepageHeader() {
 
 export default function Home(): JSX.Element {
   const { siteConfig } = useDocusaurusContext();
+
   return (
-    <Layout title={`Hello from ${siteConfig.title}`} description="Description will go into a meta tag in <head />">
+    <Layout
+      description={siteConfig.tagline}>
       <HomepageHeader />
-      <main>
-        <HomepageFeatures />
+      <main style={{ backgroundColor: "var(--banner-background)" }}>
+        <HomepageCards />
       </main>
     </Layout>
   );

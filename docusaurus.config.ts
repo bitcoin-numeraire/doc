@@ -50,10 +50,10 @@ const config: Config = {
     announcementBar: {
       id: "announcement_bar",
       content:
-        '📣 <strong><a href="https://github.com/bitcoin-numeraire/swissknife/releases/tag/v0.1.0" target="blank">Numeraire SwissKnife v0.1.0</a></strong> is out!',
+        '📣 <strong><a href="https://github.com/bitcoin-numeraire/swissknife/releases/tag/v0.1.0" target="blank">Numeraire SwissKnife</a></strong> is out!',
       backgroundColor: "#F2B81B",
       textColor: "#121212",
-      isCloseable: false,
+      isCloseable: true,
     },
     image: 'img/social.png',
     metadata: [
@@ -87,8 +87,20 @@ const config: Config = {
           label: "Account",
         },
         {
-          href: 'https://api.numeraire.tech/docs',
+          type: "doc",
+          docId: "swissknife/index",
           position: "left",
+          label: "SwissKnife",
+        },
+        {
+          type: "doc",
+          docId: "developers/index",
+          position: "left",
+          label: "Developers",
+        },
+        {
+          href: 'https://api.numeraire.tech/docs',
+          position: "right",
           label: "API Reference",
         },
         {
@@ -168,6 +180,16 @@ const config: Config = {
       darkTheme: prismThemes.oceanicNext,
     },
   } satisfies Preset.ThemeConfig,
+  themes: [
+    [
+      require.resolve("@easyops-cn/docusaurus-search-local"),
+      {
+        docsRouteBasePath: "/",
+        hashed: true,
+        indexBlog: false,
+      },
+    ],
+  ],
 };
 
 export default config;
