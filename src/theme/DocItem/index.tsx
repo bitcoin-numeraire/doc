@@ -1,6 +1,6 @@
-import React from "react";
-import OriginalDocItem from "@theme-original/DocItem";
-import Head from "@docusaurus/Head";
+import React from 'react';
+import OriginalDocItem from '@theme-original/DocItem';
+import Head from '@docusaurus/Head';
 
 function DocItem(props: any): JSX.Element {
   const { content: DocContent } = props;
@@ -11,9 +11,7 @@ function DocItem(props: any): JSX.Element {
 
   return (
     <>
-      <Head>
-        {imageUrl && <meta property="og:image" content={imageUrl} />}
-      </Head>
+      <Head>{imageUrl && <meta property="og:image" content={imageUrl} />}</Head>
       <OriginalDocItem {...props} />
     </>
   );
