@@ -1,47 +1,65 @@
 ---
+title: About Numeraire
 sidebar_position: 1
+image: /img/social.png
 ---
 
-# Tutorial Intro
+**Numeraire Technologies** is a Bitcoin development company focused on increasing Bitcoin adoption (making it the de facto [_numeraire_](https://en.wikipedia.org/wiki/Num%C3%A9raire)). To do so, we develop products and services on different Bitcoin related technologies (Mining, Lightning, Nostr and RGB smart contracts).
 
-Let's discover **Docusaurus in less than 5 minutes**.
+## Our Products
 
-## Getting Started
+Currently, Numeraire proposes different products and services for individuals and companies willing to integrate Bitcoin in a simple and flexible way, either custodially for ease of use, or self-custodially for maximum control, privacy and sovereignty.
 
-Get started by **creating a new site**.
+### Numeraire Account
 
-Or **try Docusaurus immediately** with **[docusaurus.new](https://docusaurus.new)**.
+Registering a [Numeraire Account](account/index.mdx) allows you to:
 
-### What you'll need
+- Send and receive Bitcoin through the Lightning Network
+- Register a LN and Nostr Address (*your_username@numeraire.tech*)
+- Send and Receive Zaps on Nostr
+- Access your account programatically via API Keys
+- As a developer, integrate Bitcoin into your app with the [REST API](https://api.numeraire.tech/docs)
 
-- [Node.js](https://nodejs.org/en/download/) version 18.0 or above:
-  - When installing Node.js, you are recommended to check all checkboxes related to dependencies.
+[here](account/index.mdx) Register an account through the dashboard and discover all the features a Numeraire Account offers [here](account/index.mdx).
 
-## Generate a new site
+:::info
+Registering an account is free, without transaction fees, the only fees perceived are the Lightning protocol fees.
+:::
 
-Generate a new Docusaurus site using the **classic template**.
+### Numeraire SwissKnife
 
-The classic template will automatically be added to your project after you run the command:
+[Numeraire SwissKnife](swissknife/index.mdx) is a wallet and transaction orchestrator enabling easy integration of Bitcoin, Lightning, Nostr and smart contract protocols to any entity that wishes so without the complexities of above technologies. Built in Rust.
 
-```bash
-npm init docusaurus@latest my-website classic
-```
+- Multi-user Bitcoin and Lightning wallet
+- Register your own LN and Nostr Addresses (*your_username@your_domain.com*)
+- Connect to a multitude of different Lightning Providers (Breez, Core Lightning, LND, Phoenix, Lightspark)
+- Runs on your desktop, Raspberry Pi (Umbrel, Raspiblitz, ...) or on a server in the cloud.
+- Everything the Numeraire Dashboard has to offer, as the dashboard is essentially the Numeraire SwissKnife ran as a service.
 
-You can type this command into Command Prompt, Powershell, Terminal, or any other integrated terminal of your code editor.
+Discover how to use and deploy a Numeraire SwissKnife [here](swissknife/index.mdx). Explore the implementation of
 
-The command also installs all necessary dependencies you need to run Docusaurus.
+### Numeraire for Developers
 
-## Start your site
+Whether registering a Numeraire Account or deploying your own Numeraire SwissKnife, developers can access all the features via API Keys and webhooks through the [REST API](https://api.numeraire.tech/docs).
 
-Run the development server:
+Discover how to integrate Bitcoin and Lightning in your app with [Numeraire for Developers](developers/index.mdx).
 
-```bash
-cd my-website
-npm run start
-```
+### Useful links
 
-The `cd` command changes the directory you're working with. In order to work with your newly created Docusaurus site, you'll need to navigate the terminal there.
+- [User Dashboard](https://app.numeraire.tech)
 
-The `npm run start` command builds your website locally and serves it through a development server, ready for you to view at http://localhost:3000/.
+- [Nostr](https://nostr.com/npub1m8pwckdf3n5lyd2m463ad3u4kk98qmwfs9s7hrmj6knd07frenlsfr0uje)
 
-Open `docs/intro.md` (this page) and edit some lines: the site **reloads automatically** and displays your changes.
+- [Twitter](http://x.com/NumeraireBTC)
+
+- [Website](https://numeraire.tech)
+
+- [Brand Assets](https://numeraire.tech/brand-assets)
+
+- [REST API Reference](https://api.numeraire.tech/docs)
+
+- [Lightning Node](https://amboss.space/node/02fc22cb2dd9c71b39ad246ae206259376e0127cce2192d4061abd0172b53f391b)
+
+:::tip
+If you run into a problem or have any question, reach out via [**Numeraire Contact page**](https://numeraire.tech/contact) and let us know.
+:::
