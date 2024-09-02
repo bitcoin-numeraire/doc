@@ -1,0 +1,14 @@
+---
+title: Kubernetes
+sidebar_position: 2
+image: /img/social.png
+---
+
+## Helm charts
+
+You can find an example helm charts on our [GitHub repository](https://github.com/bitcoin-numeraire/k8s-infra).
+For maximum flexibility, we recommend you to fork the repository and modify the charts to suit your needs. The repo contains a full infrastructure, including a Bitcoin node,
+a Lightning node (Core Lightning), a Postgres database, monitoring, networking and the SwissKnife application.
+
+- The [`dashboard`](https://github.com/bitcoin-numeraire/k8s-infra/tree/main/charts/dashboard) chart is used to deploy the SwissKnife Dashboard NextJS application.
+- The [`swissknife`](https://github.com/bitcoin-numeraire/k8s-infra/tree/main/charts/swissknife) chart is used to deploy the SwissKnife Backend Rust application.

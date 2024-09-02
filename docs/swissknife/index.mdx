@@ -1,47 +1,52 @@
 ---
+title: Numeraire SwissKnife
 sidebar_position: 1
+image: /img/social.png
 ---
 
-# Tutorial Intro
+Numeraire SwissKnife is a wallet and transaction orchestrator enabling easy integration of Bitcoin, Lightning, Nostr and smart contract protocols to any entity that wishes so without the complexities of above technologies.
 
-Let's discover **Docusaurus in less than 5 minutes**.
+Running your own SwissKnife instance allows you to be self-sovereign, have full control over your funds and privacy and participate in the Bitcoin network in a trustless way. We highly recommend
+installing SwissKnife on your own hardware, either on your desktop, on a Raspberry Pi or on a server in the cloud. If you don't want to be bothered, you can use the [Numeraire Dashboard](https://app.numeraire.tech), which is essentially the SwissKnife ran as a service.
 
-## Getting Started
+<div class="center-container">
+  <img
+    src="/img/article_images/account/wallet_overview.png"
+    alt="Numeraire SwissKnife"
+  />
+</div>
 
-Get started by **creating a new site**.
+## Features
 
-Or **try Docusaurus immediately** with **[docusaurus.new](https://docusaurus.new)**.
+- [`Lightning Network`](https://github.com/lnurl/luds). Send and receive payments.
+- [`LNURL`](https://github.com/lnurl/luds) support.
+- [`Lightning Address`](https://lightningaddress.com/). Deploy your own Lightning Address infrastructure. Like email, anyone can use identifiers (`username@your.domain`) to send and receive payments.
+- Generate invoices.
+- Account segregation. Support any amount of users.
+- Internal ledger for instant payments on the same SwissKnife instance.
+- REST API.
+- Frequent contacts.
+- `JWKS` with automatic public key retrieval
+- `JWT` token authentication` (tested with Auth0, Supabase).
+- `RBAC`. Fine grained authorization.
+- Data availability through pagination and advanced search.
+- Advanced [Dashboard](https://github.com/bitcoin-numeraire/swissknife-dashboard).
+- Runs in the cloud, on your desktop or on a Raspberry Pi (or similar).
 
-### What you'll need
+## Lightning Providers
 
-- [Node.js](https://nodejs.org/en/download/) version 18.0 or above:
-  - When installing Node.js, you are recommended to check all checkboxes related to dependencies.
+SwissKnife allows direct Lightning integration, supporting the most used node implementations and well-known providers:
 
-## Generate a new site
-
-Generate a new Docusaurus site using the **classic template**.
-
-The classic template will automatically be added to your project after you run the command:
-
-```bash
-npm init docusaurus@latest my-website classic
-```
-
-You can type this command into Command Prompt, Powershell, Terminal, or any other integrated terminal of your code editor.
-
-The command also installs all necessary dependencies you need to run Docusaurus.
-
-## Start your site
-
-Run the development server:
-
-```bash
-cd my-website
-npm run start
-```
-
-The `cd` command changes the directory you're working with. In order to work with your newly created Docusaurus site, you'll need to navigate the terminal there.
-
-The `npm run start` command builds your website locally and serves it through a development server, ready for you to view at http://localhost:3000/.
-
-Open `docs/intro.md` (this page) and edit some lines: the site **reloads automatically** and displays your changes.
+- [`Core Lightning`](https://corelightning.org/):
+  - Non-custodial
+  - Run your own node
+  - Manage your own liquidity.
+- [`Greenlight`](https://blockstream.com/lightning/greenlight/):
+  - Non-custodial
+  - Automatic node management.
+  - Manage your own liquidity.
+- [`Breez`](https://breez.technology/sdk/):
+  - Non-custodial
+  - Automatic node management.
+  - Automatic liquidity management via LSPs (user can switch LSPs)
+  

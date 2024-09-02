@@ -1,0 +1,97 @@
+---
+title: Default config
+sidebar_position: 2
+image: /img/social.png
+---
+
+Here is the default configuration file for Numeraire SwissKnife. You can find it on the [GitHub repository](https://github.com/bitcoin-numeraire/swissknife/blob/main/config/default.toml) as well.
+
+:::note
+The default configuration file is a `toml` file. SwissKnife supports `toml`, `yaml` and `json` config files.
+:::
+
+Some optional and sensitive values are not added to the default configuration file. You can find them in the [`.env.example`](https://github.com/bitcoin-numeraire/swissknife/blob/main/.env.example) file and in the [configuration values](swissknife/configuration/index.mdx#configuration-values).
+
+```toml
+# App
+invoice_expiry = "12h"
+domain = "numeraire.tech"
+host = "https://api.numeraire.tech"
+fee_buffer = 0.02
+ln_provider = "breez"
+auth_provider = "jwt"
+
+# Web server
+[web]
+addr = "0.0.0.0:3000"
+request_timeout = "60s"
+
+# Breez Lightning provider
+[breez_config]
+working_dir = "storage/breez"
+certs_dir = "certs/greenlight"
+log_in_file = false
+restore_only = true
+api_key = "CHANGE_ME"
+seed = "CHANGE_ME"
+
+# Core Lightning provider
+[cln_grpc_config]
+endpoint = "https://localhost:50051"
+certs_dir = "certs/lightningd"
+maxfeepercent = 0.5
+payment_timeout = "60s"
+payment_exemptfee = 5000
+retry_delay = "5s"
+
+[cln_rest_config]
+endpoint = "http://localhost:3010"
+rune = "CHANGE_ME"
+connect_timeout = "5s"
+timeout = "90s"
+connection_verbose = true
+accept_invalid_certs = false
+accept_invalid_hostnames = false
+maxfeepercent = 0.5
+payment_timeout = "60s"
+payment_exemptfee = 5000
+ws_min_reconnect_delay_delay = 1
+ws_max_reconnect_delay_delay = 30
+
+# Logging
+[logging]
+format = "json"
+ansi = false
+line_number = false
+thread_ids = false
+thread_names = false
+level = "info"
+filter = "swissknife=info"
+file = false
+
+# Authentication
+[oauth2]
+domain = "domain.auth0.com"
+audience = "https://swissknife.numeraire.tech/api/v1"
+jwks_refresh_interval = "1h"
+leeway = "60s"
+
+[jwt]
+username = "admin"
+password = "CHANGE_ME"
+token_expiry = "1h"
+secret = "CHANGE_ME"
+
+# Database
+[database]
+max_lifetime = "30m"
+idle_timeout = "5m"
+max_connections = 10
+min_connections = 0
+acquire_timeout = "5s"
+connect_timeout = "30s"
+sqlx_logging = true
+```
+
+This file should ideally not be modified directly. Instead, you should create a new configuration file (called `development.toml` or `production.toml`) and override the default values.
+You can find more information on how to do this in the [configuration guide](swissknife/configuration/index.mdx).

@@ -1,0 +1,142 @@
+---
+title: Configuration
+sidebar_position: 1
+image: /img/social.png
+---
+
+Default configuration is defined in `config/default.toml`. SwissKnife supports `toml`, `yaml` and `json` config files. The order of applied configuration is the following:
+
+1. ENV vars. Defined given the names of the config values in `default.toml`, adding the prefix `SWISSKNIFE`. Overriding all sensitive values with ENV vars is recommended. For example, `SWISSKNIFE_DATABASE__URL` will override the `database_url` value in the config (underscores are replaced with double underscores).
+2. any file under `config` corresponding to the `RUN_MODE` (`development` by default). Such as `development.toml|yaml|json` or `production.toml|yaml|json`.
+3. The `default.toml|yaml|json` file.
+
+Inspect the `.env.example` file for and generate your own `.env` for sensitive config values.
+
+On Kubernetes, you can use a `ConfigMap` to inject the configuration into the container and secrets for sensitive values.
+
+## Configuration values
+
+### App
+
+Config values for the application's business logic. To be placed at the root.
+
+| Config Value       | Description                                      |
+|--------------------|--------------------------------------------------|
+| `invoice_expiry`   | Expiry time for generated invoices               |
+| `domain`           | Application's domain                             |
+| `host`             | API host URL                                     |
+| `fee_buffer`       | Buffer percentage for transaction fees           |
+| `ln_provider`      | Lightning Network provider                       |
+| `auth_provider`    | Authentication provider                          |
+
+### Web server
+
+Config values for the web server. To be placed under `web`.
+
+| Config Value       | Description                                      |
+|--------------------|--------------------------------------------------|
+| `web.addr`         | Web server bind address and port                 |
+| `web.request_timeout` | Request timeout duration                      |
+
+### Breez Lightning provider
+
+Config values for Breez Lightning provider. To be placed under `breez_config`.
+
+| Config Value           | Description                                      |
+|------------------------|--------------------------------------------------|
+| `breez_config.working_dir` | Directory for Breez working files          |
+| `breez_config.certs_dir`   | Directory for Breez certificates           |
+| `breez_config.log_in_file` | Log output to file                          |
+| `breez_config.restore_only`| Restore only mode                           |
+| `breez_config.api_key`     | API key for Breez                           |
+| `breez_config.seed`        | Seed value for Breez                        |
+
+### Core Lightning provider (gRPC)
+
+Config values for Core [Lightning provider using gRPC](https://docs.corelightning.org/docs/grpc). To be placed under `cln_grpc_config`.
+
+| Config Value              | Description                                      |
+|---------------------------|--------------------------------------------------|
+| `cln_grpc_config.endpoint` | gRPC endpoint for Core Lightning                |
+| `cln_grpc_config.certs_dir`| Directory for Core Lightning certificates       |
+| `cln_grpc_config.maxfeepercent` | Maximum fee percentage for payments    |
+| `cln_grpc_config.payment_timeout` | Payment timeout duration              |
+| `cln_grpc_config.payment_exemptfee` | Exempt fee value for payments       |
+| `cln_grpc_config.retry_delay` | Delay between retries                     |
+
+### Core Lightning provider (REST)
+
+Config values for Core [Lightning provider using REST](https://docs.corelightning.org/docs/rest). To be placed under `cln_rest_config`.
+Numeraire SwisskKnife uses runes and the websocket server to sync events from the node.
+
+| Config Value                     | Description                                      |
+|----------------------------------|--------------------------------------------------|
+| `cln_rest_config.endpoint`       | REST endpoint for Core Lightning                 |
+| `cln_rest_config.rune`           | Rune value for Core Lightning                    |
+| `cln_rest_config.connect_timeout`| Connection timeout duration                      |
+| `cln_rest_config.timeout`        | Request timeout duration                         |
+| `cln_rest_config.connection_verbose` | Enable verbose connection logging         |
+| `cln_rest_config.accept_invalid_certs` | Accept invalid certificates              |
+| `cln_rest_config.accept_invalid_hostnames` | Accept invalid hostnames             |
+| `cln_rest_config.maxfeepercent`  | Maximum fee percentage for payments              |
+| `cln_rest_config.payment_timeout`| Payment timeout duration                         |
+| `cln_rest_config.payment_exemptfee` | Exempt fee value for payments              |
+| `cln_rest_config.ws_min_reconnect_delay_delay` | Minimum WebSocket reconnect delay  |
+| `cln_rest_config.ws_max_reconnect_delay_delay` | Maximum WebSocket reconnect delay  |
+
+:::tip
+Use an ENV var for `SWISSKNIFE_CLN_REST_CONFIG__RUNE`, as that value is highly sensitive.
+:::
+
+### Logging
+
+Config values for logging. To be placed under `logging`.
+
+| Config Value          | Description                                      |
+|-----------------------|--------------------------------------------------|
+| `logging.format`      | Format of log output                             |
+| `logging.ansi`        | Enable ANSI colors in logs                       |
+| `logging.line_number` | Include line numbers in logs                     |
+| `logging.thread_ids`  | Include thread IDs in logs                       |
+| `logging.thread_names`| Include thread names in logs                     |
+| `logging.level`       | Logging level                                    |
+| `logging.filter`      | Logging filter rules                             |
+| `logging.file`        | Output logs to file                              |
+
+### Authentication
+
+Config values for authentication. To be placed under `oauth2` or `jwt` depending on the choice of authentication.
+Numeraire SwissKnife supports OAuth2 and JWT authentication.
+
+| Config Value                   | Description                                      |
+|--------------------------------|--------------------------------------------------|
+| `oauth2.domain`                | OAuth2 domain                                    |
+| `oauth2.audience`              | OAuth2 audience                                  |
+| `oauth2.jwks_refresh_interval` | JWKS refresh interval                            |
+| `oauth2.leeway`                | Leeway time for token validation                 |
+| `jwt.username`                 | Username for JWT authentication                  |
+| `jwt.password`                 | Password for JWT authentication                  |
+| `jwt.token_expiry`             | JWT token expiry time                            |
+| `jwt.secret`                   | Secret key for JWT authentication                |
+
+:::tip
+Use ENV vars for `SWISSKNIFE_JWT__SECRET` and `SWISSKNIFE_JWT__PASSWORD`, as these values are highly sensitive.
+:::
+
+### Database
+
+Config values for the database connection. To be placed under `database`.
+
+| Config Value            | Description                                      |
+|-------------------------|--------------------------------------------------|
+| `database.max_lifetime` | Maximum connection lifetime                      |
+| `database.idle_timeout` | Idle timeout duration                            |
+| `database.max_connections` | Maximum number of connections                 |
+| `database.min_connections` | Minimum number of connections                 |
+| `database.acquire_timeout` | Timeout for acquiring a connection            |
+| `database.connect_timeout` | Timeout for establishing a connection         |
+| `database.sqlx_logging` | Enable SQLx logging                              |
+
+:::tip
+Use an ENV var for the `SWISSKNIFE_DATABASE__URL`.
+:::
