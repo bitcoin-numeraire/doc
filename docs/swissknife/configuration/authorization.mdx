@@ -1,0 +1,31 @@
+---
+title: Authorization
+sidebar_position: 4
+image: /img/social.png
+---
+
+Numeraire SwissKnife has Role Based Access Control (RBAC) implemented for authorization.
+The permissions are added to the user's JWT token and are checked on each request.
+
+## Permissions
+
+Permissions are defined in the `permissions` field of the user's JWT token.
+The permissions are a list of strings, each representing a permission and are checked against the requested endpoint and method.
+
+It is the responsibility of the client's authentication provider (Auth0, Supabase, etc.) to add the permissions to the JWT token.
+When using the [`sign-in`](https://api.numeraire.tech/docs#tag/authentication/POST/v1/auth/sign-in) endpoint, all permissions are added to the JWT token, the user acting as a superuser.
+
+### Example
+
+```json
+{
+  "sub": "1234567890",
+  ...,
+  "permissions": [
+    "read:transactions"
+  ]
+}
+```
+In this example, the user has the permissions to read transactions.
+
+To see the permissions required for each endpoint, check the [API documentation](https://api.numeraire.tech/docs).

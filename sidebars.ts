@@ -72,6 +72,10 @@ const sidebars: SidebarsConfig = {
       },
       items: [
         "swissknife/configuration/default",
+        "swissknife/configuration/ln-providers",
+        "swissknife/configuration/authentication",
+        "swissknife/configuration/authorization",
+        "swissknife/configuration/database",
       ],
     },
     "swissknife/usage/index",
