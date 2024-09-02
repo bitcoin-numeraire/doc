@@ -19,7 +19,7 @@ type CardItem = {
 const CardList: CardItem[] = [
   {
     title: 'Account',
-    link: '/account/quickstart',
+    link: '/account',
     description: (
       <>
         Learn all the different features of your Numeraire Account. Receive and send Bitcoin, create a LN Address, receive Zaps on Nostr and
@@ -32,7 +32,7 @@ const CardList: CardItem[] = [
   },
   {
     title: 'SwissKnife',
-    link: '/swissknife/quickstart',
+    link: '/swissknife',
     description: (
       <>
         Deploy your own self-custodial Bitcoin infrastructure. Create your own <b>username@mydomain.com</b> LN addresses, deploy smart
@@ -45,7 +45,7 @@ const CardList: CardItem[] = [
   },
   {
     title: 'Developers',
-    link: '/developers/quickstart',
+    link: '/developers',
     description: (
       <>
         Integrate Bitcoin and Lightning into your own app with the <b>Numeraire API</b> through API keys and webhooks.
