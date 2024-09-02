@@ -1,0 +1,84 @@
+---
+title: Lightning Providers
+sidebar_position: 2
+image: /img/social.png
+---
+
+Numeraire SwissKnife supports multiple Lightning Network providers. The choice of provider depends on your needs and preferences regarding
+ease of use, privacy and sovereignty.
+
+You can manage your node through the dashboard or the REST API.
+
+:::tip
+The simplest way to get started with Numeraire SwissKnife is to use the **Breez** Lightning provider and get your own Lightning node up
+and running in minutes in a non-custodial way in the Blockstream Greenlight cloud.
+:::
+
+## Core Lightning
+
+[Core Lightning](https://corelightning.org/) is a non-custodial Lightning Network implementation built in C and Rust by Blockstream. It allows you to run your own node and manage your own liquidity.
+Core Lightning offers a gRPC and REST API, both supported.
+
+- Non-custodial
+- Run your own node
+- Manage your own liquidity
+
+<div class="center-container">
+  <img
+    src="/img/article_images/swissknife/cln_node_overview.png"
+    alt="Core Lightning node"
+  />
+</div>
+*Preview of the Core Lightning node management in the dashboard*.
+
+### gRPC (`ln_provider = "clngrpc"`)
+
+See the configuration values for Core Lightning gRPC [here](swissknife/configuration/index.mdx#core-lightning-provider-grpc).
+
+### REST (`ln_provider = "clnrest`)
+
+See the configuration values for Core Lightning REST [here](swissknife/configuration/index.mdx#core-lightning-provider-rest).
+
+## Breez Greenlight (`ln_provider = "breez"`)
+
+[Breez](https://breez.technology/) is a cloud-based Lightning integration. It offers a self-custodial, end-to-end solution
+for integrating Lightning payments, utilizing nodes-on-demand provided by Blockstream’s Greenlight,
+with built-in Lightning Service Providers (LSP), on-chain interoperability and much more.
+
+Numeraire SwissKnife supports the [Breez SDK](https://github.com/breez/breez-sdk-greenlight).
+
+- Non-custodial
+- Automatic node management
+- Automatic liquidity management via LSPs
+
+<div class="center-container">
+  <img
+    src="/img/article_images/swissknife/breez_node_overview.png"
+    alt="Breez Greenlight node"
+  />
+</div>
+*Preview of the Breez Greenlight node management in the dashboard*.
+
+See the configuration values for Breez [here](swissknife/configuration/index.mdx#breez-lightning-provider).
+
+## LND
+
+[The Lightning Network Daemon](https://github.com/lightningnetwork/lnd) (LND) - is a complete implementation of a Lightning Network node built in Go by Lightning Labs. It is the most popular Lightning Network implementation and is widely used in the Bitcoin ecosystem.
+
+Coming soon...
+
+## Phoenixd
+
+[phoenixd](https://github.com/ACINQ/phoenixd) is the server equivalent of the popular phoenix wallet for mobile. It is written in Kotlin Multiplatform and runs natively on Linux, MacOS (x86 and ARM), and Windows (WSL).
+
+Coming soon...
+
+## Lightspark
+
+[Lightspark](https://www.lightspark.com/) Connect is a software service that enables our customers to use the Lightning Network to send and receive payments. Through an easy interface, customers control their funds on Lightning. Lightspark cannot initiate customer transactions or move or control customer funds. Customers can move funds to a different service at any time.
+
+Coming soon...
+
+## Not finding your provider?
+
+If you want to use a different Lightning provider, please open a feature request on our [GitHub repository](https://github.com/bitcoin-numeraire/swissknife/issues).

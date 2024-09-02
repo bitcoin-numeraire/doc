@@ -1,0 +1,29 @@
+---
+title: Authentication
+sidebar_position: 3
+image: /img/social.png
+---
+
+Numeraire SwissKnife supports multiple authentication methods:
+
+## JWT (`auth_provider = "jwt"`)
+
+JWT authentication gives full access to an admin via the [`sign-in`](https://api.numeraire.tech/docs#tag/authentication/POST/v1/auth/sign-in) endpoint. The admin username and password need to be set in the configuration file.
+
+JWT authentication can also be used with third-party authentication providers that do not provide asymmetric keys (like Supabase).
+In this case, the `jwt.secret` value should be set in the configuration file.
+
+See the configuration values for JWT [here](swissknife/configuration/index.mdx#authentication).
+
+## OAuth2 (`auth_provider = "oauth2"`)
+
+OAuth2 authentication allows users to sign in with their OAuth2 provider. The `domain` and `audience` need to be set in the conffiguration file.
+Numeraire SwissKnife will automatically fetch the JWK Set in intervals (`jwks_refresh_interval`) from the provider and validate the JWT, enabling key rotation.
+
+See the configuration values for OAuth2 [here](swissknife/configuration/index.mdx#authentication).
+
+*Tested with [Auth0](https://auth0.com/)*.
+
+## Not finding your preferred auth method?
+
+If you want to use a different authentication method, please open a feature request on our [GitHub repository](https://github.com/bitcoin-numeraire/swissknife/issues).

@@ -53,7 +53,7 @@ Config values for Breez Lightning provider. To be placed under `breez_config`.
 
 ### Core Lightning provider (gRPC)
 
-Config values for Core Lightning provider using gRPC. To be placed under `cln_grpc_config`.
+Config values for Core [Lightning provider using gRPC](https://docs.corelightning.org/docs/grpc). To be placed under `cln_grpc_config`.
 
 | Config Value              | Description                                      |
 |---------------------------|--------------------------------------------------|
@@ -66,7 +66,8 @@ Config values for Core Lightning provider using gRPC. To be placed under `cln_gr
 
 ### Core Lightning provider (REST)
 
-Config values for Core Lightning provider using REST. To be placed under `cln_rest_config`.
+Config values for Core [Lightning provider using REST](https://docs.corelightning.org/docs/rest). To be placed under `cln_rest_config`.
+Numeraire SwisskKnife uses runes and the websocket server to sync events from the node.
 
 | Config Value                     | Description                                      |
 |----------------------------------|--------------------------------------------------|
@@ -82,6 +83,10 @@ Config values for Core Lightning provider using REST. To be placed under `cln_re
 | `cln_rest_config.payment_exemptfee` | Exempt fee value for payments              |
 | `cln_rest_config.ws_min_reconnect_delay_delay` | Minimum WebSocket reconnect delay  |
 | `cln_rest_config.ws_max_reconnect_delay_delay` | Maximum WebSocket reconnect delay  |
+
+:::tip
+Use an ENV var for `SWISSKNIFE_CLN_REST_CONFIG__RUNE`, as that value is highly sensitive.
+:::
 
 ### Logging
 
@@ -114,6 +119,10 @@ Numeraire SwissKnife supports OAuth2 and JWT authentication.
 | `jwt.token_expiry`             | JWT token expiry time                            |
 | `jwt.secret`                   | Secret key for JWT authentication                |
 
+:::tip
+Use ENV vars for `SWISSKNIFE_JWT__SECRET` and `SWISSKNIFE_JWT__PASSWORD`, as these values are highly sensitive.
+:::
+
 ### Database
 
 Config values for the database connection. To be placed under `database`.
@@ -128,4 +137,6 @@ Config values for the database connection. To be placed under `database`.
 | `database.connect_timeout` | Timeout for establishing a connection         |
 | `database.sqlx_logging` | Enable SQLx logging                              |
 
-Use an ENV var for the `SWISSKNIFE_DATABASE__URL` for the database connection URL.
+:::tip
+Use an ENV var for the `SWISSKNIFE_DATABASE__URL`.
+:::
