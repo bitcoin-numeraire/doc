@@ -120,6 +120,12 @@ const config: Config = {
           position: "right",
           "aria-label": "Twitter",
         },
+        {
+          href: "https://nostr.com/npub1m8pwckdf3n5lyd2m463ad3u4kk98qmwfs9s7hrmj6knd07frenlsfr0uje",
+          className: "header-nostr-link",
+          position: "right",
+          "aria-label": "Nostr",
+        },
       ],
     },
     footer: {
@@ -140,6 +146,10 @@ const config: Config = {
               label: 'API Reference',
               href: 'https://api.numeraire.tech/docs',
             },
+            {
+              label: 'Lightning Node',
+              href: 'https://amboss.space/node/02fc22cb2dd9c71b39ad246ae206259376e0127cce2192d4061abd0172b53f391b',
+            },
           ],
         },
         {
@@ -155,7 +165,7 @@ const config: Config = {
             },
             {
               label: 'Nostr',
-              href: '#',
+              href: 'https://nostr.com/npub1m8pwckdf3n5lyd2m463ad3u4kk98qmwfs9s7hrmj6knd07frenlsfr0uje',
             },
           ],
         },
@@ -170,6 +180,7 @@ const config: Config = {
               label: 'Contribute to our docs',
               href: 'https://github.com/bitcoin-numeraire/doc',
             },
+            
           ],
         },
       ],

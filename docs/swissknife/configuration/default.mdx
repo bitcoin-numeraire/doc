@@ -37,7 +37,7 @@ seed = "CHANGE_ME"
 
 # Core Lightning provider
 [cln_grpc_config]
-endpoint = "https://localhost:50051"
+endpoint = "https://localhost:11002"
 certs_dir = "certs/lightningd"
 maxfeepercent = 0.5
 payment_timeout = "60s"
@@ -46,6 +46,7 @@ retry_delay = "5s"
 
 [cln_rest_config]
 endpoint = "http://localhost:3010"
+ca_cert_path = "certs/lightningd/ca.cert"
 rune = "CHANGE_ME"
 connect_timeout = "5s"
 timeout = "90s"
@@ -55,8 +56,23 @@ accept_invalid_hostnames = false
 maxfeepercent = 0.5
 payment_timeout = "60s"
 payment_exemptfee = 5000
-ws_min_reconnect_delay_delay = 1
-ws_max_reconnect_delay_delay = 30
+ws_min_reconnect_delay = "1s"
+ws_max_reconnect_delay = "30s"
+
+# LND Lightning provider
+[lnd_config]
+host = "localhost:8080"
+macaroon_path = "certs/lnd/admin.macaroon"
+ca_cert_path = "certs/lnd/tls.cert"
+connect_timeout = "5s"
+timeout = "90s"
+connection_verbose = true
+accept_invalid_certs = false
+accept_invalid_hostnames = false
+payment_timeout = "60s"
+fee_limit_msat = 25000
+ws_min_reconnect_delay = "1s"
+ws_max_reconnect_delay = "30s"
 
 # Logging
 [logging]
@@ -91,6 +107,14 @@ min_connections = 0
 acquire_timeout = "5s"
 connect_timeout = "30s"
 sqlx_logging = true
+
+# RGB
+[rgb]
+data_dir = "storage/rgblib"
+media_dir = "storage/media"
+electrum_url = "localhost:50001"
+proxy_server_url = "rpc://localhost:3030/json-rpc"
+min_confirmations = 3
 ```
 
 This file should ideally not be modified directly. Instead, you should create a new configuration file (called `development.toml` or `production.toml`) and override the default values.

@@ -4,6 +4,48 @@ sidebar_position: 2
 image: /img/social.jpg
 ---
 
-(WIP - Feature Coming soon)
+Integrate all functionalities provided by Numeraire into your applications, with the [Numeraire API](https://api.numeraire.tech/docs) using API Keys.
 
-API Keys are used to authenticate requests to the [Numeraire API](https://api.numeraire.tech/docs). They are generated in the [Dashboard](https://app.numeraire.tech) and can be used to access the API endpoints.
+API Keys are used to authenticate requests. They are generated in the [Dashboard](https://app.numeraire.tech) and can be used to access the API endpoints.
+When deploying your own Numeraire SwissKnife, you also have access to the API in the same way by connecting to your own instance.
+With the right permissions, you also access the API on behalf of other users as an admin, allowing you to behave as banking infrastructure for your users.
+
+## Generate an API token
+
+1. Go to your [Settings](https://app.numeraire.tech/settings?tab=apikeys) on the API Keys tab.
+
+<div class="center-container" style={{ marginBottom: 20 }}>
+  <img
+    src="/img/article_images/developers/apikeys_overview.png"
+    alt="Numeraire SwissKnife"
+  />
+</div>
+
+2. Click on the `New` button.
+
+<div class="center-container" style={{ marginBottom: 20 }}>
+  <img
+    src="/img/article_images/developers/apikeys_new.png"
+    alt="Numeraire SwissKnife"
+  />
+</div>
+
+3. Fill in the form and select the permissions you want to grant. As user, you can only generate an API key to access your own account.
+4. Once the token is generated, copy it and store it in a safe place. You will not be able to see it again!
+
+## Use your API token
+
+Once your API key is generated, you can pass the token in the `Api-Key` header of your requests.
+
+```bash
+curl https://api.numeraire.tech/v1/payments -H 'Api-Key: YOUR_API_KEY'
+```
+
+:::tip
+Always send payload data in JSON format using the `Content-Type: application/json` header.
+:::
+
+## BUIDL
+
+You are now ready to start building with Numeraire! Start integrating into your application, create a Wordpress plugin, register Lightning and Nostr Addresses
+for your users, etc. The possibilities are endless!
