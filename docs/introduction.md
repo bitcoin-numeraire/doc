@@ -17,13 +17,13 @@ Registering a [Numeraire Account](account/index.mdx) allows you to:
 - Send and receive Bitcoin through the Lightning Network
 - Register a LN and Nostr Address (*your_username@numeraire.tech*)
 - Send and Receive Zaps on Nostr
-- Access your account programatically via API Keys
+- Access your account programmatically via API Keys
 - As a developer, integrate Bitcoin into your app with the [REST API](https://api.numeraire.tech/docs)
 
-[here](account/index.mdx) Register an account through the dashboard and discover all the features a Numeraire Account offers [here](account/index.mdx).
+Register an account through the dashboard and discover all the features a Numeraire Account offers [here](account/index.mdx).
 
 :::info
-Registering an account is free, without transaction fees, the only fees perceived are the Lightning protocol fees.
+Registering an account and sending payments is free. Numeraire does not charge transaction fees, the only fees perceived are the Lightning Network fees.
 :::
 
 ### Numeraire SwissKnife
@@ -36,7 +36,7 @@ Registering an account is free, without transaction fees, the only fees perceive
 - Runs on your desktop, Raspberry Pi (Umbrel, Raspiblitz, ...) or on a server in the cloud.
 - Everything the Numeraire Dashboard has to offer, as the dashboard is essentially the Numeraire SwissKnife ran as a service.
 
-Discover how to use and deploy a Numeraire SwissKnife [here](swissknife/index.mdx). Explore the implementation of
+Discover how to use and deploy a Numeraire SwissKnife [here](swissknife/index.mdx).
 
 ### Numeraire for Developers
 
