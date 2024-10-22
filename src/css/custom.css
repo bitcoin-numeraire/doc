@@ -392,6 +392,47 @@
   html[data-theme="dark"] .header-dockerhub-link::before {
     filter: invert(100%);
   }
+
+  /* nostr */
+  .header-nostr-link:hover {
+    opacity: 0.6;
+  }
+  
+  .header-nostr-link::before {
+    content: "";
+    width: 24px;
+    height: 24px;
+    margin-top: 8px;
+    display: flex;
+    background: url("icon_nostr.svg")
+      no-repeat;
+    background-size: 20px 20px;
+  }
+  
+  html[data-theme="dark"] .header-nostr-link::before {
+    content: "";
+    width: 24px;
+    height: 24px;
+    margin-top: 8px;
+    display: flex;
+    background: url("icon_nostr_dark.svg")
+      no-repeat;
+    background-size: 20px 20px;
+  }
+  
+  @media (max-width: 996px) {
+    .header-nostr-link::before {
+      margin-top: 0;
+      background-size: 24px 24px;
+      margin-left: 2px;
+    }
+  
+    html[data-theme="dark"] .header-nostr-link::before {
+      margin-top: 0;
+      background-size: 24px 24px;
+      margin-left: 2px;
+    }
+  }
   
   @media only screen and (max-width: 525px) {
     .menu__link {
@@ -418,6 +459,11 @@
     .header-dockerhub-link::after {
       margin-left: 20px;
       content: "DockerHub ";
+    }
+
+    .header-nostr-link::after {
+      margin-left: 20px;
+      content: "Twitter ";
     }
   }
   

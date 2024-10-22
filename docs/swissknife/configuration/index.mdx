@@ -53,7 +53,7 @@ Config values for Breez Lightning provider. To be placed under `breez_config`.
 
 ### Core Lightning provider (gRPC)
 
-Config values for Core [Lightning provider using gRPC](https://docs.corelightning.org/docs/grpc). To be placed under `cln_grpc_config`.
+Config values for [Core Lightning provider using gRPC](https://docs.corelightning.org/docs/grpc). To be placed under `cln_grpc_config`.
 
 | Config Value              | Description                                      |
 |---------------------------|--------------------------------------------------|
@@ -66,7 +66,7 @@ Config values for Core [Lightning provider using gRPC](https://docs.corelightnin
 
 ### Core Lightning provider (REST)
 
-Config values for Core [Lightning provider using REST](https://docs.corelightning.org/docs/rest). To be placed under `cln_rest_config`.
+Config values for [Core Lightning provider using REST](https://docs.corelightning.org/docs/rest). To be placed under `cln_rest_config`.
 Numeraire SwisskKnife uses runes and the websocket server to sync events from the node.
 
 | Config Value                     | Description                                      |
@@ -81,12 +81,33 @@ Numeraire SwisskKnife uses runes and the websocket server to sync events from th
 | `cln_rest_config.maxfeepercent`  | Maximum fee percentage for payments              |
 | `cln_rest_config.payment_timeout`| Payment timeout duration                         |
 | `cln_rest_config.payment_exemptfee` | Exempt fee value for payments              |
-| `cln_rest_config.ws_min_reconnect_delay_delay` | Minimum WebSocket reconnect delay  |
-| `cln_rest_config.ws_max_reconnect_delay_delay` | Maximum WebSocket reconnect delay  |
+| `cln_rest_config.ws_min_reconnect_delay` | Minimum WebSocket reconnect delay  |
+| `cln_rest_config.ws_max_reconnect_delay` | Maximum WebSocket reconnect delay  |
+
 
 :::tip
 Use an ENV var for `SWISSKNIFE_CLN_REST_CONFIG__RUNE`, as that value is highly sensitive.
 :::
+
+### LND provider
+
+Config values for [LND provider using REST](https://lightning.engineering/api-docs/api/lnd/). To be placed under `lnd_config`.
+Numeraire SwisskKnife uses macaroons and the websocket server to sync events from the node.
+
+| Config Value                     | Description                                      |
+|----------------------------------|--------------------------------------------------|
+| `lnd_config.host`                | Host and port for LND gRPC API                   |
+| `lnd_config.macaroon_path`       | File path to the admin macaroon                  |
+| `lnd_config.ca_cert_path`        | File path to the TLS certificate                 |
+| `lnd_config.connect_timeout`     | Connection timeout duration                      |
+| `lnd_config.timeout`             | Request timeout duration                         |
+| `lnd_config.connection_verbose`  | Enable verbose connection logging                |
+| `lnd_config.accept_invalid_certs`| Accept invalid certificates                      |
+| `lnd_config.accept_invalid_hostnames` | Accept invalid hostnames                    |
+| `lnd_config.payment_timeout`       | Payment timeout duration                       |
+| `lnd_config.fee_limit_msat`        | Maximum fee limit in millisatoshis for payments  |
+| `lnd_config.ws_min_reconnect_delay` | Minimum WebSocket reconnect delay       |
+| `lnd_config.ws_max_reconnect_delay` | Maximum WebSocket reconnect delay       |
 
 ### Logging
 
