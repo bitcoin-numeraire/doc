@@ -1,7 +1,7 @@
 {
   "name": "numeraire-docs",
   "author": "Dario Anongba Varela",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "email": "dario.varela@numeraire.tech",
   "description": "Numeraire products documentation",
   "scripts": {
