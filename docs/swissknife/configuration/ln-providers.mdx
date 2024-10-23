@@ -23,14 +23,6 @@ Core Lightning offers a gRPC and REST API, both supported.
 - Run your own node
 - Manage your own liquidity
 
-<div class="center-container">
-  <img
-    src="/img/article_images/swissknife/cln_node_overview.png"
-    alt="Core Lightning node"
-  />
-</div>
-*Preview of the Core Lightning node management in the dashboard*.
-
 ### gRPC (`ln_provider = "clngrpc"`)
 
 See the configuration values for Core Lightning gRPC [here](swissknife/configuration/index.mdx#core-lightning-provider-grpc).
@@ -61,11 +53,15 @@ Numeraire SwissKnife supports the [Breez SDK](https://github.com/breez/breez-sdk
 
 See the configuration values for Breez [here](swissknife/configuration/index.mdx#breez-lightning-provider).
 
-## LND
+## LND (`ln_provider = "lnd"`)
 
 [The Lightning Network Daemon](https://github.com/lightningnetwork/lnd) (LND) - is a complete implementation of a Lightning Network node built in Go by Lightning Labs. It is the most popular Lightning Network implementation and is widely used in the Bitcoin ecosystem.
 
-Coming soon...
+- Non-custodial
+- Run your own node
+- Manage your own liquidity
+
+See the configuration values for LND [here](swissknife/configuration/index.mdx#lnd-provider).
 
 ## Phoenixd
 
