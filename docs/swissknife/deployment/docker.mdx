@@ -4,4 +4,56 @@ sidebar_position: 1
 image: /img/social.png
 ---
 
-The docker images are currently hosted on a private registry. To get access to the images, please [contact us](https://numeraire.tech/contact).
+SwissKnife images are published publicly on [Docker Hub](https://hub.docker.com/u/bitcoinnumeraire). Three images are available, each built for both `linux/amd64` and `linux/arm64`.
+
+| Image | Contents | Port |
+| --- | --- | --- |
+| [`bitcoinnumeraire/swissknife`](https://hub.docker.com/r/bitcoinnumeraire/swissknife) | All-in-one: backend API + dashboard (static export served by the backend) | `3000` |
+| [`bitcoinnumeraire/swissknife-server`](https://hub.docker.com/r/bitcoinnumeraire/swissknife-server) | Backend API only (no dashboard) | `3000` |
+| [`bitcoinnumeraire/swissknife-dashboard`](https://hub.docker.com/r/bitcoinnumeraire/swissknife-dashboard) | Standalone Next.js dashboard (Node.js server) | `8080` |
+
+Each image is published under the following tags:
+
+- `0.2.0` — the exact release version
+- `0.2` — the latest patch of the `0.2` minor series
+- `0` — the latest minor of the `0` major series
+- `latest` — the most recent release
+
+## Self-Contained Installation (Recommended)
+
+The all-in-one image bundles the backend API and the dashboard in a single container, served on port `3000`.
+
+```bash
+docker pull bitcoinnumeraire/swissknife:latest
+docker run -p 3000:3000 bitcoinnumeraire/swissknife:latest
+```
+
+This image includes:
+
+- The Rust backend API server.
+- The Next.js dashboard (static export served by the backend).
+- The default configuration at `/config/default.toml`.
+
+## Separated Backend and Frontend
+
+For Kubernetes or microservices deployments, run the backend and dashboard as separate containers.
+
+### Backend Only
+
+```bash
+docker pull bitcoinnumeraire/swissknife-server:latest
+docker run -p 3000:3000 bitcoinnumeraire/swissknife-server:latest
+```
+
+### Frontend Only (Standalone Next.js Server)
+
+```bash
+docker pull bitcoinnumeraire/swissknife-dashboard:latest
+docker run -p 8080:8080 bitcoinnumeraire/swissknife-dashboard:latest
+```
+
+When using a separated deployment:
+
+- Configure the dashboard to point to your backend API endpoint.
+- The backend runs without the dashboard (`SWISSKNIFE_DASHBOARD_DIR=""`).
+- The frontend runs as a standalone Node.js server on port `8080`.

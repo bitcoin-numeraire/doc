@@ -10,8 +10,14 @@ ease of use, privacy and sovereignty.
 You can manage your node through the dashboard or the REST API.
 
 :::tip
-The simplest way to get started with Numeraire SwissKnife is to use the **Breez** Lightning provider and get your own Lightning node up
-and running in minutes in a non-custodial way in the Blockstream Greenlight cloud.
+The recommended way to get started with Numeraire SwissKnife is to connect a self-hosted node: **Core Lightning (CLN)** or **LND**.
+Both are supported over gRPC and REST, run fully non-custodially, and let you keep complete control of your node and liquidity.
+:::
+
+:::note
+Self-hosted **CLN** and **LND** providers include an integrated on-chain Bitcoin wallet (address management, wallet sync and
+transaction preparation before broadcast). The on-chain address script type is configured via the root-level `bitcoin_address_type`
+setting (`p2pkh`, `p2sh`, `p2wpkh` (default) or `p2tr`).
 :::
 
 ## Core Lightning
@@ -23,45 +29,34 @@ Core Lightning offers a gRPC and REST API, both supported.
 - Run your own node
 - Manage your own liquidity
 
-### gRPC (`ln_provider = "clngrpc"`)
+### gRPC (`ln_provider = "cln_grpc"`)
 
 See the configuration values for Core Lightning gRPC [here](swissknife/configuration/index.mdx#core-lightning-provider-grpc).
 
-### REST (`ln_provider = "clnrest"`)
+### REST (`ln_provider = "cln_rest"`)
 
 See the configuration values for Core Lightning REST [here](swissknife/configuration/index.mdx#core-lightning-provider-rest).
 
-## Breez Greenlight (`ln_provider = "breez"`)
-
-[Breez](https://breez.technology/) is a cloud-based Lightning integration. It offers a self-custodial, end-to-end solution
-for integrating Lightning payments, utilizing nodes-on-demand provided by Blockstream’s Greenlight,
-with built-in Lightning Service Providers (LSP), on-chain interoperability and much more.
-
-Numeraire SwissKnife supports the [Breez SDK](https://github.com/breez/breez-sdk-greenlight).
-
-- Non-custodial
-- Automatic node management
-- Automatic liquidity management via LSPs
-
-<div class="center-container">
-  <img
-    src="/img/article_images/swissknife/breez_node_overview.png"
-    alt="Breez Greenlight node"
-  />
-</div>
-*Preview of the Breez Greenlight node management in the dashboard*.
-
-See the configuration values for Breez [here](swissknife/configuration/index.mdx#breez-lightning-provider).
-
-## LND (`ln_provider = "lnd"`)
+## LND
 
 [The Lightning Network Daemon](https://github.com/lightningnetwork/lnd) (LND) - is a complete implementation of a Lightning Network node built in Go by Lightning Labs. It is the most popular Lightning Network implementation and is widely used in the Bitcoin ecosystem.
+LND offers a gRPC and REST API, both supported.
 
 - Non-custodial
 - Run your own node
 - Manage your own liquidity
 
-See the configuration values for LND [here](swissknife/configuration/index.mdx#lnd-provider).
+:::note
+The LND `macaroon_path` may point to either a raw binary macaroon or a base64-encoded macaroon file. The format is auto-detected.
+:::
+
+### gRPC (`ln_provider = "lnd_grpc"`)
+
+See the configuration values for LND gRPC [here](swissknife/configuration/index.mdx#lnd-provider-grpc).
+
+### REST (`ln_provider = "lnd_rest"`)
+
+See the configuration values for LND REST [here](swissknife/configuration/index.mdx#lnd-provider-rest).
 
 ## Phoenixd
 

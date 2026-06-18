@@ -4,7 +4,7 @@ sidebar_position: 1
 image: /img/social.png
 ---
 
-**Numeraire Technologies** is a Bitcoin development company focused on increasing Bitcoin adoption (making it the de facto [_numeraire_](https://en.wikipedia.org/wiki/Num%C3%A9raire)). To do so, we develop products and services on different Bitcoin related technologies (Mining, Lightning, Nostr and RGB smart contracts).
+**Numeraire Technologies** is a Bitcoin development company focused on increasing Bitcoin adoption (making it the de facto [_numeraire_](https://en.wikipedia.org/wiki/Num%C3%A9raire)). To do so, we develop products and services on different Bitcoin related technologies (Mining, Lightning and Nostr).
 
 ## Our Products
 
@@ -28,11 +28,12 @@ Registering an account and sending payments is free. Numeraire does not charge t
 
 ### Numeraire SwissKnife
 
-[Numeraire SwissKnife](swissknife/index.mdx) is a wallet and transaction orchestrator enabling easy integration of Bitcoin, Lightning, Nostr and smart contract protocols to any entity that wishes so without the complexities of above technologies. Built in Rust.
+[Numeraire SwissKnife](swissknife/index.mdx) is a wallet and transaction orchestrator enabling easy integration of Bitcoin, Lightning and Nostr to any entity that wishes so without the complexities of above technologies. Built in Rust.
 
 - Multi-user Bitcoin and Lightning wallet
+- On-chain Bitcoin wallet (address management, wallet sync and transaction preparation) for self-hosted CLN/LND, distinct from the Lightning wallet
 - Register your own LN and Nostr Addresses (*your_username@your_domain.com*)
-- Connect to a multitude of different Lightning Providers (Breez, Core Lightning, LND, Phoenix, Lightspark)
+- Connect to Core Lightning (CLN) and LND, each via gRPC and REST
 - Runs on your desktop, Raspberry Pi (Umbrel, Raspiblitz, ...) or on a server in the cloud.
 - Everything the Numeraire Dashboard has to offer, as the dashboard is essentially the Numeraire SwissKnife ran as a service.
 

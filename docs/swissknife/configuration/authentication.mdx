@@ -8,7 +8,9 @@ Numeraire SwissKnife supports multiple authentication methods:
 
 ## JWT (`auth_provider = "jwt"`)
 
-JWT authentication gives full access to an admin via the [`sign-in`](https://api.numeraire.tech/docs#tag/authentication/POST/v1/auth/sign-in) endpoint. The admin username and password need to be set in the configuration file.
+JWT authentication gives full access to an admin via the [`sign-in`](https://api.numeraire.tech/docs#tag/authentication/POST/v1/auth/sign-in) endpoint. It only requires `jwt.secret` to be set in the configuration file (and optionally `jwt.token_expiry`).
+
+The admin password is not set in the configuration file. On first launch you set it through the [`sign-up`](https://api.numeraire.tech/docs#tag/authentication/POST/v1/auth/sign-up) endpoint, which stores it hashed in the database. The admin username is fixed as `admin`.
 
 JWT authentication can also be used with third-party authentication providers that do not provide asymmetric keys (like Supabase).
 In this case, the `jwt.secret` value should be set in the configuration file.
@@ -17,12 +19,17 @@ See the configuration values for JWT [here](swissknife/configuration/index.mdx#a
 
 ## OAuth2 (`auth_provider = "oauth2"`)
 
-OAuth2 authentication allows users to sign in with their OAuth2 provider. The `domain` and `audience` need to be set in the conffiguration file.
-Numeraire SwissKnife will automatically fetch the JWK Set in intervals (`jwks_refresh_interval`) from the provider and validate the JWT, enabling key rotation.
+OAuth2 authentication allows users to sign in with their OAuth2 provider. The `domain` and `audience` need to be set in the configuration file.
+
+`oauth2.domain` is the OpenID provider issuer base URL. Numeraire SwissKnife resolves the JWKS URI and the canonical issuer from this base via OpenID Connect (OIDC) discovery (the scheme defaults to `https` when omitted), so it works with any OIDC-compliant provider, not just Auth0. It will then automatically fetch the JWK Set in intervals (`jwks_refresh_interval`) from the provider and validate the JWT, enabling key rotation.
 
 See the configuration values for OAuth2 [here](swissknife/configuration/index.mdx#authentication).
 
 *Tested with [Auth0](https://auth0.com/)*.
+
+## API keys
+
+In addition to JWT and OAuth2, requests can be authenticated with an API key. API keys are created per user with scoped permissions and are presented on each request, granting access limited to the key's permissions.
 
 ## Not finding your preferred auth method?
 
