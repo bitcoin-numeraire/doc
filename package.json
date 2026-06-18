@@ -1,7 +1,7 @@
 {
   "name": "numeraire-docs",
   "author": "Dario Anongba Varela",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "email": "dario.varela@numeraire.tech",
   "description": "Numeraire products documentation",
   "scripts": {
@@ -59,6 +59,6 @@
   },
   "packageManager": "yarn@4.17.0",
   "engines": {
-    "node": ">=20.0"
+    "node": ">=24.0.0"
   }
 }
