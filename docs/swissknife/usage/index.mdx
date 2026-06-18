@@ -4,4 +4,259 @@ sidebar_position: 1
 image: /img/social.png
 ---
 
-Usage guide coming soon. Stay tuned! 
+This guide walks through day-to-day operation of a self-hosted SwissKnife instance: signing in, checking your balance, receiving and sending payments over Lightning and on-chain Bitcoin, and automating everything with scoped API keys.
+
+Every operation described here is available both from the **Dashboard UI** and from the **REST API**. The full, always-up-to-date endpoint reference (request/response schemas, required permissions, and an interactive playground) lives at [api.numeraire.tech/docs](https://api.numeraire.tech/docs). When self-hosting, the same API is served by your own instance (default port `3000` for the all-in-one image), so substitute your instance URL for the examples below.
+
+:::tip
+The `User Wallet` endpoints, prefixed with `/v1/me`, are the main access point for an authenticated user. They operate on your own wallet by default. The non-`/me` variants (for example `/v1/payments`, `/v1/invoices`) are the admin-scoped equivalents that can act on any wallet on the instance.
+:::
+
+## Signing in
+
+SwissKnife self-hosted is single-tenant by default: on first launch you create one initial **Admin user**. There is no static admin password in the configuration file; it is set once through the sign-up flow and stored hashed in the database.
+
+### First launch (initial setup)
+
+When the dashboard starts, it checks setup status via [`GET /v1/system/setup`](https://api.numeraire.tech/docs#tag/system/GET/v1/system/setup), which returns:
+
+- `welcome_complete` — whether the welcome flow has been completed.
+- `sign_up_complete` — whether the Admin user has been created.
+
+Complete the welcome step (the dashboard calls [`POST /v1/system/mark-welcome-complete`](https://api.numeraire.tech/docs#tag/system/POST/v1/system/mark-welcome-complete)), then create the Admin user by setting a password. Sign-up only collects a password (entered and confirmed); there are no name, email, or profile fields.
+
+```bash
+# Create the initial Admin user (JWT auth provider only)
+curl -X POST https://your-instance:3000/v1/auth/sign-up \
+  -H 'Content-Type: application/json' \
+  -d '{ "password": "<your-admin-password>" }'
+# => { "token": "<jwt>" }
+```
+
+:::note
+Sign-up is only available when SwissKnife is configured with the `JWT` auth provider. If you use OAuth2 / OIDC, the Admin identity and login are handled by your external OpenID provider via redirect, and you do not create a password here. See the [Authentication](../configuration/authentication.mdx) configuration page.
+:::
+
+### Subsequent logins
+
+Authenticate with the password you set to obtain a JWT:
+
+```bash
+curl -X POST https://your-instance:3000/v1/auth/sign-in \
+  -H 'Content-Type: application/json' \
+  -d '{ "password": "<your-admin-password>" }'
+# => { "token": "<jwt>" }
+```
+
+Send the returned token as a Bearer credential on subsequent requests:
+
+```bash
+curl https://your-instance:3000/v1/me \
+  -H 'Authorization: Bearer <jwt>'
+```
+
+A JWT obtained through `sign-in` carries all permissions (the user acts as a superuser). For programmatic, least-privilege access, use [API keys](#managing-api-keys) instead.
+
+## Checking your balance
+
+Fetch your wallet and its balance:
+
+- [`GET /v1/me`](https://api.numeraire.tech/docs#tag/user-wallet/GET/v1/me) — your wallet details.
+- [`GET /v1/me/balance`](https://api.numeraire.tech/docs#tag/user-wallet/GET/v1/me/balance) — the balance breakdown.
+
+```bash
+curl https://your-instance:3000/v1/me/balance \
+  -H 'Authorization: Bearer <jwt>'
+```
+
+The balance is reported in millisatoshis (`msat`) with these fields:
+
+| Field            | Meaning                                          |
+| ---------------- | ------------------------------------------------ |
+| `available_msat` | Amount available to spend.                       |
+| `reserved_msat`  | Amount reserved for pending outgoing payments.   |
+| `received_msat`  | Total amount received.                           |
+| `sent_msat`      | Total amount sent (settled outgoing payments).   |
+| `fees_paid_msat` | Total routing/network fees paid.                 |
+
+Requires the `read:wallet` permission.
+
+## Receiving
+
+SwissKnife can receive funds over Lightning (invoices, your Lightning Address, LNURL-pay, and Nostr Zaps) and on-chain Bitcoin.
+
+### Lightning invoices
+
+Generate a BOLT11 invoice for a specific amount:
+
+- [`POST /v1/me/invoices`](https://api.numeraire.tech/docs#tag/user-wallet/POST/v1/me/invoices) — generate an invoice for your wallet.
+- [`GET /v1/me/invoices`](https://api.numeraire.tech/docs#tag/user-wallet/GET/v1/me/invoices) and [`GET /v1/me/invoices/{id}`](https://api.numeraire.tech/docs#tag/user-wallet/GET/v1/me/invoices/{id}) — list and look up invoices.
+
+```bash
+curl -X POST https://your-instance:3000/v1/me/invoices \
+  -H 'Authorization: Bearer <jwt>' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "amount_msat": 100000,
+    "description": "Coffee",
+    "expiry": 3600
+  }'
+```
+
+Only `amount_msat` is required; `description` and `expiry` (seconds) are optional. Generating an invoice requires the `write:transaction` permission; listing requires `read:transaction`.
+
+### Your Lightning Address
+
+A Lightning Address (`username@your.domain`) lets anyone pay you using a human-readable identifier, the same way email works. The domain is configured per instance (see [Configuration](../configuration/index.mdx)).
+
+- [`POST /v1/me/lightning-address`](https://api.numeraire.tech/docs#tag/user-wallet/POST/v1/me/lightning-address) — register your address (`username`).
+- [`GET /v1/me/lightning-address`](https://api.numeraire.tech/docs#tag/user-wallet/GET/v1/me/lightning-address) — fetch your registered address.
+- [`PUT /v1/me/lightning-address`](https://api.numeraire.tech/docs#tag/user-wallet/PUT/v1/me/lightning-address) — update it (toggle `active`, Nostr settings).
+
+```bash
+curl -X POST https://your-instance:3000/v1/me/lightning-address \
+  -H 'Authorization: Bearer <jwt>' \
+  -H 'Content-Type: application/json' \
+  -d '{ "username": "alice", "allows_nostr": true, "nostr_pubkey": "<hex-pubkey>" }'
+```
+
+Lightning Addresses are ready to receive funds through the LNURL protocol immediately upon registration. Registering/updating requires `write:ln_address`; reading requires `read:ln_address`.
+
+### LNURL-pay
+
+Each registered Lightning Address is served over LNURL-pay at well-known, unauthenticated endpoints that any LNURL-capable wallet can resolve:
+
+- [`GET /.well-known/lnurlp/{username}`](https://api.numeraire.tech/docs#tag/lnurl/GET/.well-known/lnurlp/{username}) — returns the LNURL `payRequest` for the address.
+- [`GET /lnurlp/{username}/callback`](https://api.numeraire.tech/docs#tag/lnurl/GET/lnurlp/{username}/callback) — returns an invoice for the requested amount.
+
+You do not call these yourself; they are what a sender's wallet hits when paying `username@your.domain`.
+
+### Nostr (NIP-05 and Zaps)
+
+When a Lightning Address is registered with `allows_nostr: true` and a `nostr_pubkey`, SwissKnife also serves NIP-05 verification and enables Lightning Zaps for that identifier:
+
+- [`GET /.well-known/nostr.json`](https://api.numeraire.tech/docs#tag/nostr/GET/.well-known/nostr.json) — maps the username to its Nostr public key (hex), satisfying [NIP-05](https://github.com/nostr-protocol/nips/blob/master/05.md).
+
+### On-chain Bitcoin address
+
+For self-hosted CLN and LND setups, SwissKnife includes an integrated on-chain wallet. Generate a deposit address to receive on-chain Bitcoin:
+
+- [`POST /v1/me/bitcoin/address`](https://api.numeraire.tech/docs#tag/user-wallet/POST/v1/me/bitcoin/address) — get a deposit address for your wallet.
+
+```bash
+curl -X POST https://your-instance:3000/v1/me/bitcoin/address \
+  -H 'Authorization: Bearer <jwt>' \
+  -H 'Content-Type: application/json' \
+  -d '{}'
+```
+
+The returned address stays the same until it is used on-chain, after which a new one is generated. You can optionally request a specific script `type` (`p2pkh`, `p2sh`, `p2wpkh`, or `p2tr`); when omitted, the instance default (`bitcoin_address_type`, defaults to `p2wpkh`) is used. This requires the `write:btc_address` permission. See the [on-chain wallet](#on-chain-bitcoin-wallet) section below for managing addresses.
+
+## Sending
+
+A single endpoint handles all outgoing payments. The recipient `input` can be a BOLT11 invoice, an LNURL, or a Lightning Address; payments to another wallet on the same instance are settled instantly through the internal ledger.
+
+- [`POST /v1/me/payments`](https://api.numeraire.tech/docs#tag/user-wallet/POST/v1/me/payments) — send a payment from your wallet.
+- [`GET /v1/me/payments`](https://api.numeraire.tech/docs#tag/user-wallet/GET/v1/me/payments) and [`GET /v1/me/payments/{id}`](https://api.numeraire.tech/docs#tag/user-wallet/GET/v1/me/payments/{id}) — list and look up payments.
+
+```bash
+# Pay a BOLT11 invoice
+curl -X POST https://your-instance:3000/v1/me/payments \
+  -H 'Authorization: Bearer <jwt>' \
+  -H 'Content-Type: application/json' \
+  -d '{ "input": "lnbc1..." }'
+
+# Pay a Lightning Address (amount required; the input has none)
+curl -X POST https://your-instance:3000/v1/me/payments \
+  -H 'Authorization: Bearer <jwt>' \
+  -H 'Content-Type: application/json' \
+  -d '{ "input": "bob@example.com", "amount_msat": 100000, "comment": "Thanks!" }'
+```
+
+Notes on the request body:
+
+- `input` is required. For a BOLT11 invoice that already encodes an amount, omit `amount_msat`; for an LNURL or Lightning Address, supply `amount_msat`.
+- `comment` is optional and is shown to the recipient for LNURL payments.
+
+Sending requires the `write:transaction` permission; listing payments requires `read:transaction`.
+
+:::tip
+Admins can send on behalf of any wallet using the non-`/me` endpoint [`POST /v1/payments`](https://api.numeraire.tech/docs#tag/payments/POST/v1/payments) with a `wallet_id`. Most integrations should use `/v1/me/payments`.
+:::
+
+## On-chain Bitcoin wallet
+
+The on-chain wallet (available for self-hosted CLN and LND) supports address management, wallet synchronization, and transaction preparation before broadcast.
+
+### Generating and managing addresses
+
+- [`POST /v1/me/bitcoin/address`](https://api.numeraire.tech/docs#tag/user-wallet/POST/v1/me/bitcoin/address) — generate/return a deposit address for your wallet (see [On-chain Bitcoin address](#on-chain-bitcoin-address) above).
+- [`GET /v1/bitcoin/addresses`](https://api.numeraire.tech/docs#tag/bitcoin-addresses/GET/v1/bitcoin/addresses) — list Bitcoin addresses (with filtering and pagination).
+- [`GET /v1/bitcoin/addresses/{id}`](https://api.numeraire.tech/docs#tag/bitcoin-addresses/GET/v1/bitcoin/addresses/{id}) — look up a single address.
+- [`DELETE /v1/bitcoin/addresses`](https://api.numeraire.tech/docs#tag/bitcoin-addresses/DELETE/v1/bitcoin/addresses) and [`DELETE /v1/bitcoin/addresses/{id}`](https://api.numeraire.tech/docs#tag/bitcoin-addresses/DELETE/v1/bitcoin/addresses/{id}) — delete addresses.
+
+Each address record reports its `address`, `address_type`, and a `used` flag indicating whether it has already received funds on-chain. Reading addresses requires `read:btc_address`; generating or deleting requires `write:btc_address`.
+
+### Wallet sync and transaction preparation
+
+SwissKnife synchronizes on-chain wallet state with your node so deposits are detected and balances stay current. Outgoing on-chain spends are **prepared before broadcast**, giving you a safe path to construct and review a transaction. On-chain spends are sent through the same payment flow as Lightning: pass an on-chain destination to [`POST /v1/me/payments`](https://api.numeraire.tech/docs#tag/user-wallet/POST/v1/me/payments).
+
+:::note
+The on-chain wallet requires a self-hosted Core Lightning or LND provider and the `bitcoin_address_type` setting. See the [Lightning providers](../configuration/ln-providers.mdx) and [Configuration](../configuration/index.mdx) pages for setup.
+:::
+
+## Managing API keys
+
+For automation and least-privilege integrations, create API keys instead of using the all-powerful sign-in JWT. Each key is scoped to a subset of permissions and can be revoked independently.
+
+- [`POST /v1/me/api-keys`](https://api.numeraire.tech/docs#tag/user-wallet/POST/v1/me/api-keys) — generate a key for your wallet.
+- [`GET /v1/me/api-keys`](https://api.numeraire.tech/docs#tag/user-wallet/GET/v1/me/api-keys) and [`GET /v1/me/api-keys/{id}`](https://api.numeraire.tech/docs#tag/user-wallet/GET/v1/me/api-keys/{id}) — list and look up keys.
+- [`DELETE /v1/me/api-keys`](https://api.numeraire.tech/docs#tag/user-wallet/DELETE/v1/me/api-keys) and [`DELETE /v1/me/api-keys/{id}`](https://api.numeraire.tech/docs#tag/user-wallet/DELETE/v1/me/api-keys/{id}) — revoke keys.
+
+```bash
+curl -X POST https://your-instance:3000/v1/me/api-keys \
+  -H 'Authorization: Bearer <jwt>' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "payments-bot",
+    "permissions": ["read:wallet", "read:transaction", "write:transaction"],
+    "expiry": 2592000
+  }'
+```
+
+`name` and `permissions` are required; `description` and `expiry` (seconds) are optional. You can only grant a key permissions that are a subset of your own. The full `key` value is returned **only once on creation** — store it securely, as it cannot be retrieved again.
+
+The available permission scopes are:
+
+| Scope               | Grants                                            |
+| ------------------- | ------------------------------------------------- |
+| `read:wallet`       | Read wallet details and balance.                  |
+| `write:wallet`      | Create and manage wallets.                        |
+| `read:transaction`  | List and read invoices and payments.              |
+| `write:transaction` | Generate invoices and send payments.              |
+| `read:ln_address`   | Read Lightning Address details.                   |
+| `write:ln_address`  | Register and update Lightning Addresses.          |
+| `read:ln_node`      | Read Lightning node information.                   |
+| `write:ln_node`     | Perform Lightning node operations.                |
+| `read:btc_address`  | Read on-chain Bitcoin addresses.                  |
+| `write:btc_address` | Generate and delete on-chain Bitcoin addresses.   |
+| `read:api_key`      | List and read API keys.                           |
+| `write:api_key`     | Create and revoke API keys.                       |
+
+Present the key in the `Api-Key` header on each request:
+
+```bash
+curl https://your-instance:3000/v1/me/payments \
+  -H 'Api-Key: YOUR_API_KEY' \
+  -H 'Content-Type: application/json'
+```
+
+:::tip
+Always send request bodies as JSON with the `Content-Type: application/json` header. For more on API keys and building integrations, see the [API Keys](../../developers/api-keys.mdx) developer guide.
+:::
+
+## Where to go next
+
+- Browse the complete, interactive endpoint reference at [api.numeraire.tech/docs](https://api.numeraire.tech/docs).
+- Configure Lightning providers and the on-chain wallet in [Configuration](../configuration/index.mdx).
+- Review the permission model in [Authorization](../configuration/authorization.mdx).

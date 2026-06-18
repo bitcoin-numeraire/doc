@@ -4,7 +4,7 @@ sidebar_position: 1
 image: /img/social.png
 ---
 
-Numeraire SwissKnife is a wallet and transaction orchestrator enabling easy integration of Bitcoin, Lightning, Nostr and smart contract protocols to any entity that wishes so without the complexities of above technologies.
+Numeraire SwissKnife is a wallet and transaction orchestrator enabling easy integration of Bitcoin, Lightning and Nostr to any entity that wishes so without the complexities of above technologies.
 
 Running your own SwissKnife instance allows you to be self-sovereign, have full control over your funds and privacy and participate in the Bitcoin network in a trustless way. We highly recommend
 installing SwissKnife on your own hardware, either on your desktop, on a Raspberry Pi or on a server in the cloud. If you don't want to be bothered, you can use the [Numeraire Dashboard](https://app.numeraire.tech), which is essentially the SwissKnife ran as a service.
@@ -21,13 +21,15 @@ installing SwissKnife on your own hardware, either on your desktop, on a Raspber
 - [`Lightning Network`](https://github.com/lnurl/luds). Send and receive payments.
 - [`LNURL`](https://github.com/lnurl/luds) support.
 - [`Lightning Address`](https://lightningaddress.com/). Deploy your own Lightning Address infrastructure. Like email, anyone can use identifiers (`username@your.domain`) to send and receive payments.
+- On-chain Bitcoin wallet. Address management, wallet sync and transaction preparation before broadcast (for self-hosted Core Lightning and LND).
 - Generate invoices.
 - Account segregation. Support any amount of users.
 - Internal ledger for instant payments on the same SwissKnife instance.
 - REST API.
 - Frequent contacts.
 - `JWKS` with automatic public key retrieval
-- `JWT` token authentication` (tested with Auth0, Supabase).
+- `JWT` token authentication (tested with Auth0, Supabase).
+- `OAuth2` / `OIDC` authentication via OpenID Connect discovery (`auth_provider = "jwt" | "oauth2"`).
 - `RBAC`. Fine grained authorization.
 - Data availability through pagination and advanced search.
 - Advanced [Dashboard](https://github.com/bitcoin-numeraire/swissknife-dashboard).
@@ -37,21 +39,13 @@ installing SwissKnife on your own hardware, either on your desktop, on a Raspber
 
 ## Lightning Providers
 
-SwissKnife allows direct Lightning integration, supporting the most used node implementations and well-known providers:
+SwissKnife allows direct Lightning integration with self-hosted node implementations. Core Lightning (CLN) and LND are each supported over gRPC and REST (`cln_grpc`, `cln_rest`, `lnd_grpc`, `lnd_rest`):
 
-- [`Core Lightning`](https://corelightning.org/):
+- [`Core Lightning`](https://corelightning.org/) (via gRPC and REST):
   - Non-custodial
   - Run your own node
   - Manage your own liquidity.
-- [`Greenlight`](https://blockstream.com/lightning/greenlight/):
-  - Non-custodial
-  - Automatic node management.
-  - Manage your own liquidity.
-- [`Breez`](https://breez.technology/sdk/):
-  - Non-custodial
-  - Automatic node management.
-  - Automatic liquidity management via LSPs (user can switch LSPs)
-- [`LND`](https://github.com/lightningnetwork/lnd)
+- [`LND`](https://github.com/lightningnetwork/lnd) (via gRPC and REST):
   - Non-custodial
   - Run your own node
   - Manage your own liquidity

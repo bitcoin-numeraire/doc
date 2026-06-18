@@ -4,4 +4,194 @@ sidebar_position: 1
 image: /img/social.png
 ---
 
-Architecture guide coming soon. Stay tuned! 
+This page explains how SwissKnife is built: how the code is organized, how it talks to your
+Lightning node and the Bitcoin network, how it stores data, how it authenticates requests, and
+how the pieces are deployed in production. It is a conceptual overview — for exact configuration
+keys see the [Configuration](../configuration/index.mdx) section, and for endpoints see the
+[REST API reference](https://api.numeraire.tech/docs).
+
+## Design overview
+
+SwissKnife follows a layered, domain-driven design. The codebase is split into three top-level
+layers, each with a single responsibility:
+
+- **`domains`** — the business logic. Each domain owns its entities, services, use cases, and
+  repository interfaces. Domains depend only on abstractions, never on concrete infrastructure.
+- **`infra`** — the infrastructure adapters that implement those abstractions: the HTTP server,
+  database, Lightning node clients, authenticators, and logging.
+- **`application`** — the composition root. It wires concrete adapters into the domain services
+  at startup and centralizes error and OpenAPI definitions.
+
+The dependency direction always points inward: infrastructure depends on the domains, the domains
+depend on nothing concrete. This keeps the business logic testable in isolation and lets you swap
+out a Lightning provider or database engine without touching domain code.
+
+```
+            ┌─────────────────────────────────────────────┐
+            │                Axum HTTP server               │   infra::app
+            │   /v1/invoices  /v1/payments  /v1/bitcoin …   │
+            └──────────────────────┬──────────────────────┘
+                                   │
+            ┌──────────────────────▼──────────────────────┐
+            │                  AppServices                  │   application
+            │  invoice · payment · wallet · lnurl · …       │   (composition root)
+            └──────┬─────────────────────────────┬─────────┘
+                   │ trait abstractions           │ trait abstractions
+        ┌──────────▼──────────┐        ┌──────────▼──────────────┐
+        │      AppStore       │        │  LnClient / BitcoinWallet │   infra adapters
+        │  (SeaORM repos)     │        │  CLN / LND, on-chain      │
+        └──────────┬──────────┘        └──────────┬──────────────┘
+                   │                              │
+        ┌──────────▼──────────┐        ┌──────────▼──────────────┐
+        │ PostgreSQL / SQLite │        │  Your Lightning node      │
+        └─────────────────────┘        │  + Bitcoin network        │
+                                       └───────────────────────────┘
+```
+
+### Anatomy of a domain
+
+Every domain is structured the same way, which makes the codebase predictable. Taking the
+`invoice` domain as an example:
+
+- **`*_handler`** — the Axum HTTP handlers that map requests to use cases and serialize responses.
+- **`*_service`** — the concrete implementation of the business logic.
+- **`*_use_cases`** — the trait that defines what the domain can do (the public contract).
+- **`*_repository`** — the trait describing the persistence the domain needs (implemented in
+  `infra`).
+- **`entities`** — the domain types.
+
+The domains in v0.2.0 are:
+
+| Domain | Responsibility |
+| --- | --- |
+| `invoice` | Create and track incoming Lightning invoices. |
+| `payment` | Send Lightning payments and reconcile their status. |
+| `ln_address` | Manage [Lightning Addresses](https://lightningaddress.com/) (`username@your.domain`). |
+| `lnurl` | Serve the LNURL-pay and `.well-known/lnurlp` flows. |
+| `nostr` | Serve NIP-05 identities via `.well-known/nostr.json`. |
+| `bitcoin` | On-chain wallet: address management, wallet sync, and transaction preparation. |
+| `wallet` | Per-user wallets and balances. |
+| `user` | Authentication, the initial Admin user, and scoped API keys. |
+| `system` | Health probes, first-run setup state, and node configuration. |
+| `event` | Records domain events (e.g. settled invoices) for projections and reconciliation. |
+
+## The Lightning provider abstraction
+
+SwissKnife is bring-your-own-node: it connects to a Lightning node you run, rather than
+custodying funds itself. Domains never speak to a node directly — they depend on a single
+`LnClient` trait that exposes node-agnostic operations such as `invoice`, `pay`,
+`invoice_by_hash`, `payment_by_hash`, `cancel_invoice`, and `health`.
+
+Four concrete implementations satisfy this trait, one per supported transport:
+
+| `ln_provider` value | Node | Transport |
+| --- | --- | --- |
+| `cln_grpc` | Core Lightning (CLN) | gRPC |
+| `cln_rest` | Core Lightning (CLN) | REST |
+| `lnd_grpc` | LND | gRPC |
+| `lnd_rest` | LND | REST |
+
+The composition root reads `ln_provider` at startup and constructs the matching client, so the
+rest of the application is unaware of which node or transport is in use. LND macaroons can be
+supplied as either a raw binary file or a base64-encoded file — the client auto-detects which.
+
+### On-chain Bitcoin support
+
+v0.2.0 adds an integrated on-chain Bitcoin wallet for self-hosted CLN and LND. Each Lightning
+client also implements a `BitcoinWallet` trait that provides address derivation
+(`new_address`), wallet synchronization (`synchronize`), output lookup, and transaction
+**preparation** (`prepare_transaction`) followed by an explicit sign-and-broadcast step. The
+default address script type is configured with `bitcoin_address_type` (`p2pkh`, `p2sh`, `p2wpkh`,
+or `p2tr`; defaults to `p2wpkh`).
+
+Because the same node connection backs both `LnClient` and `BitcoinWallet`, the on-chain wallet
+reuses your node's funds and chain backend rather than running a separate wallet.
+
+## Persistence
+
+Persistence is handled through [SeaORM](https://www.sea-ql.org/SeaORM/). The `AppStore` is a
+collection of repository traits (`InvoiceRepository`, `PaymentRepository`, `WalletRepository`,
+`BtcAddressRepository`, and so on), each with a SeaORM-backed implementation. Domains depend only
+on the traits, so the storage engine is an infrastructure detail.
+
+Two database engines are supported:
+
+- **SQLite** — the default. The connection is opened in WAL journal mode with a configurable
+  `busy_timeout` so concurrent readers don't block the single writer.
+- **PostgreSQL** — for production, multi-instance, or higher-throughput deployments.
+
+The engine is chosen entirely by the `database.url` connection string; no code changes are
+needed. Schema migrations run automatically on startup, so a fresh database is brought
+up to date before the server begins accepting requests.
+
+Writes that must be atomic across multiple tables (such as recording a payment together with its
+ledger entries) go through dedicated unit-of-work abstractions (`PaymentUnitOfWork`,
+`EventProjectionUnitOfWork`) rather than independent repository calls.
+
+## Authentication and authorization
+
+Authentication and authorization are two distinct concerns in SwissKnife.
+
+**Authentication** answers "who is calling?" Every protected request carries either a `Bearer`
+JWT or an `api-key` header. The selected `auth_provider` decides how a JWT is validated:
+
+- **`jwt`** — local JWT auth. SwissKnife signs and verifies tokens with the configured
+  `jwt.secret`. There is a single initial **Admin** user whose password is set on first launch via
+  the `/v1/auth/sign-up` flow (stored as a bcrypt hash in the database), not in any config file.
+- **`oauth2`** — delegated auth via any OpenID Connect provider. SwissKnife fetches the provider's
+  OIDC discovery document from the configured issuer (`oauth2.domain`) to learn its JWKS URI and
+  canonical issuer, then validates incoming tokens against the published public keys. This makes
+  it compatible with any OIDC-compliant identity provider.
+
+**API keys** offer a second credential type for programmatic access. A presented key is
+SHA-256-hashed and looked up in the store; the matching record carries both the wallet it belongs
+to and the set of permissions granted to it.
+
+**Authorization** answers "what may they do?" Authenticated callers carry a list of scoped
+**permissions** (for example `read:wallet`, `write:transaction`, `read:btc_address`,
+`write:api_key`). Handlers check the required permission before acting, so an API key can be
+issued with exactly the scopes it needs and nothing more. The Admin user is granted all
+permissions.
+
+## The HTTP server and event listener
+
+SwissKnife runs two long-lived components, both started from `main`:
+
+1. **The Axum HTTP server** exposes the versioned REST API (`/v1/invoices`, `/v1/payments`,
+   `/v1/wallets`, `/v1/me`, `/v1/auth`, `/v1/api-keys`, `/v1/lightning-addresses`,
+   `/v1/bitcoin/addresses`, `/v1/system`), the public LNURL and `.well-known` routes, and the
+   interactive API docs at `/docs`. When the all-in-one bundle is used, the server also serves the
+   dashboard's static assets as a fallback route. The router is wrapped with tracing, request
+   timeout, and CORS middleware, and shuts down gracefully on `Ctrl+C`/`SIGTERM`.
+
+2. **The event listener** subscribes to your Lightning node's event stream (over gRPC or a
+   WebSocket, depending on the provider) and ingests settled invoices, payments, and on-chain
+   deposits into the database. It is supervised: if the connection drops it reconnects with
+   exponential backoff and re-syncs, so it never silently stops ingesting events.
+
+The startup order is deliberate. The listener starts **first** and performs an initial invoice and
+payment sync, so the local state is reconciled with the node before the HTTP server begins
+accepting external requests.
+
+## Deployment topology
+
+SwissKnife is published as three multi-arch (`linux/amd64` + `linux/arm64`) Docker images on
+Docker Hub, supporting two deployment styles. See [Docker](../deployment/docker.mdx) for the full
+instructions.
+
+- **All-in-one bundle** — `bitcoinnumeraire/swissknife` runs the API and serves the dashboard's
+  static assets from a single container on port `3000`. This is the simplest way to self-host.
+- **Separated server + dashboard** — for microservice or Kubernetes deployments, the API and the
+  UI ship as independent images:
+  - `bitcoinnumeraire/swissknife-server` — the API only, on port `3000`.
+  - `bitcoinnumeraire/swissknife-dashboard` — the standalone Next.js dashboard, on port `8080`.
+
+In the bundle, the server discovers the dashboard's static files via the `dashboard_dir` path; in
+the separated topology the server runs with no dashboard directory and the dashboard image is
+deployed alongside it. Both topologies talk to the same backend code and the same database — the
+split only changes how the UI is served.
+
+:::tip
+For a single self-hosted instance, start with the all-in-one bundle and SQLite. Move to the
+separated images and PostgreSQL when you need to scale the API and dashboard independently.
+:::

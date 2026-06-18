@@ -7,6 +7,14 @@ image: /img/social.png
 There are numerous ways to build Numeraire SwissKnife from source. You can either download the artifacts from the release
 page [here](https://github.com/bitcoin-numeraire/swissknife/releases) or clone the repository (we recommend checking out the desired release and not use `main` directly).
 
+:::note
+Releases are published as git tags of the form `vX.Y.Z`. The current release is **v0.2.0**, so check out `v0.2.0` (or the latest tag) rather than building from `main`:
+
+```bash
+git checkout v0.2.0
+```
+:::
+
 ## Cargo
 
 A common way is to use the [`cargo`](https://doc.rust-lang.org/cargo/getting-started/installation.html) package manager, which is the Rust programming language's official package manager.
@@ -19,16 +27,27 @@ cargo build --release
 
 ## Docker
 
-Another way is to use Docker. You can build the Docker image with the following command from the Makefile.
+Another way is to use Docker. The Makefile provides three build targets, matching the three published images:
 
 ```bash
 git clone git@github.com:bitcoin-numeraire/swissknife.git
 cd swissknife
+
+# All-in-one: backend API + dashboard (static export served by the backend)
 make build-docker
+
+# Backend API only (--target swissknife-server)
+make build-docker-server
+
+# Standalone Next.js dashboard (-f dashboard/Dockerfile ./dashboard)
+make build-docker-dashboard
 ```
 
-Once the image is built, you can run it with the following command.
+The all-in-one image serves the bundled dashboard static assets via `SWISSKNIFE_DASHBOARD_DIR`, while the `swissknife-server` image sets that variable to an empty string so the backend runs without the dashboard.
+
+Once the all-in-one image is built, run it and map port `3000`, which is where the API and dashboard are served:
 
 ```bash
-make run-docker
+docker run -p 3000:3000 swissknife:latest
 ```
+

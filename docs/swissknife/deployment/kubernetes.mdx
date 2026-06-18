@@ -12,3 +12,10 @@ a Lightning node (Core Lightning), a Postgres database, monitoring, networking a
 
 - The [`dashboard`](https://github.com/bitcoin-numeraire/k8s-infra/tree/main/charts/dashboard) chart is used to deploy the SwissKnife Dashboard NextJS application.
 - The [`swissknife`](https://github.com/bitcoin-numeraire/k8s-infra/tree/main/charts/swissknife) chart is used to deploy the SwissKnife Backend Rust application.
+
+:::note
+Kubernetes uses the separated images, not the all-in-one bundle:
+
+- The `swissknife` chart deploys the API-only `bitcoinnumeraire/swissknife-server` image on port `3000`.
+- The `dashboard` chart deploys the standalone `bitcoinnumeraire/swissknife-dashboard` Next.js image on port `8080`.
+:::
