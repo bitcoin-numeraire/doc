@@ -13,8 +13,12 @@ const config: Config = {
   projectName: 'numeraire-docs',
   deploymentBranch: "gh-pages",
   onBrokenLinks: 'throw',
-  onBrokenMarkdownLinks: 'warn',
   trailingSlash: false,
+  markdown: {
+    hooks: {
+      onBrokenMarkdownLinks: 'warn',
+    },
+  },
   i18n: {
     defaultLocale: 'en',
     locales: ['en'],
