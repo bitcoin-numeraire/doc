@@ -9,7 +9,7 @@ This guide walks through day-to-day operation of a self-hosted SwissKnife instan
 Every operation described here is available both from the **Dashboard UI** and from the **REST API**. The full, always-up-to-date endpoint reference (request/response schemas, required permissions, and an interactive playground) lives at [api.numeraire.tech/docs](https://api.numeraire.tech/docs). When self-hosting, the same API is served by your own instance (default port `3000` for the all-in-one image), so substitute your instance URL for the examples below.
 
 :::tip
-The `User Wallet` endpoints, prefixed with `/v1/me`, are the main access point for an authenticated user. They operate on your own wallet by default. The non-`/me` variants (for example `/v1/payments`, `/v1/invoices`) are the admin-scoped equivalents that can act on any wallet on the instance.
+The `/v1/me` endpoints are the main access point for an authenticated account. Account settings and API keys are account-scoped, while balances, invoices, payments, contacts, and Bitcoin addresses require an explicit wallet path: `/v1/me/wallets/{wallet_id}/...`.
 :::
 
 ## Signing in
@@ -59,17 +59,21 @@ A JWT obtained through `sign-in` carries all permissions (the user acts as a sup
 
 ## Checking your balance
 
-Fetch your wallet and its balance:
+Fetch your account, list its wallets, then request the balance for the wallet you want to use:
 
-- [`GET /v1/me`](https://api.numeraire.tech/docs#tag/user-wallet/GET/v1/me) — your wallet details.
-- [`GET /v1/me/balance`](https://api.numeraire.tech/docs#tag/user-wallet/GET/v1/me/balance) — the balance breakdown.
+- [`GET /v1/me`](https://api.numeraire.tech/docs#tag/me/GET/v1/me) — your account profile.
+- [`GET /v1/me/wallets`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/wallets) — wallets owned by your account.
+- [`GET /v1/me/wallets/{wallet_id}/balance`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/wallets/{wallet_id}/balance) — the selected wallet's balance breakdown.
 
 ```bash
-curl https://your-instance:3000/v1/me/balance \
+curl https://your-instance:3000/v1/me/wallets \
+  -H 'Authorization: Bearer <jwt>'
+
+curl https://your-instance:3000/v1/me/wallets/<wallet-id>/balance \
   -H 'Authorization: Bearer <jwt>'
 ```
 
-The balance is reported in millisatoshis (`msat`) with these fields:
+Native BTC balances are reported in millisatoshis (`msat`) with these fields:
 
 | Field            | Meaning                                          |
 | ---------------- | ------------------------------------------------ |
@@ -89,11 +93,11 @@ SwissKnife can receive funds over Lightning (invoices, your Lightning Address, L
 
 Generate a BOLT11 invoice for a specific amount:
 
-- [`POST /v1/me/invoices`](https://api.numeraire.tech/docs#tag/user-wallet/POST/v1/me/invoices) — generate an invoice for your wallet.
-- [`GET /v1/me/invoices`](https://api.numeraire.tech/docs#tag/user-wallet/GET/v1/me/invoices) and [`GET /v1/me/invoices/{id}`](https://api.numeraire.tech/docs#tag/user-wallet/GET/v1/me/invoices/{id}) — list and look up invoices.
+- [`POST /v1/me/wallets/{wallet_id}/invoices`](https://api.numeraire.tech/docs#tag/me/POST/v1/me/wallets/{wallet_id}/invoices) — generate an invoice for the selected wallet.
+- [`GET /v1/me/wallets/{wallet_id}/invoices`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/wallets/{wallet_id}/invoices) and [`GET /v1/me/wallets/{wallet_id}/invoices/{id}`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/wallets/{wallet_id}/invoices/{id}) — list and look up invoices for that wallet.
 
 ```bash
-curl -X POST https://your-instance:3000/v1/me/invoices \
+curl -X POST https://your-instance:3000/v1/me/wallets/<wallet-id>/invoices \
   -H 'Authorization: Bearer <jwt>' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -109,18 +113,23 @@ Only `amount_msat` is required; `description` and `expiry` (seconds) are optiona
 
 A Lightning Address (`username@your.domain`) lets anyone pay you using a human-readable identifier, the same way email works. The domain is configured per instance (see [Configuration](../configuration/index.mdx)).
 
-- [`POST /v1/me/lightning-address`](https://api.numeraire.tech/docs#tag/user-wallet/POST/v1/me/lightning-address) — register your address (`username`).
-- [`GET /v1/me/lightning-address`](https://api.numeraire.tech/docs#tag/user-wallet/GET/v1/me/lightning-address) — fetch your registered address.
-- [`PUT /v1/me/lightning-address`](https://api.numeraire.tech/docs#tag/user-wallet/PUT/v1/me/lightning-address) — update it (toggle `active`, Nostr settings).
+- [`POST /v1/me/lightning-address`](https://api.numeraire.tech/docs#tag/me/POST/v1/me/lightning-address) — register your address (`username`) and select the receiving wallet.
+- [`GET /v1/me/lightning-address`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/lightning-address) — fetch your registered address.
+- [`PUT /v1/me/lightning-address`](https://api.numeraire.tech/docs#tag/me/PUT/v1/me/lightning-address) — update it (toggle `active`, Nostr settings).
 
 ```bash
 curl -X POST https://your-instance:3000/v1/me/lightning-address \
   -H 'Authorization: Bearer <jwt>' \
   -H 'Content-Type: application/json' \
-  -d '{ "username": "alice", "allows_nostr": true, "nostr_pubkey": "<hex-pubkey>" }'
+  -d '{
+    "username": "alice",
+    "receive_wallet_id": "<wallet-id>",
+    "allows_nostr": true,
+    "nostr_pubkey": "<hex-pubkey>"
+  }'
 ```
 
-Lightning Addresses are ready to receive funds through the LNURL protocol immediately upon registration. Registering/updating requires `write:ln_address`; reading requires `read:ln_address`.
+Lightning Addresses are account-level handles, but each one routes incoming invoices to a concrete `receive_wallet_id`. The selected wallet must belong to your account and hold a Lightning-compatible native-BTC asset. Registering/updating requires `write:ln_address`; reading requires `read:ln_address`.
 
 ### LNURL-pay
 
@@ -141,10 +150,10 @@ When a Lightning Address is registered with `allows_nostr: true` and a `nostr_pu
 
 For self-hosted CLN and LND setups, SwissKnife includes an integrated on-chain wallet. Generate a deposit address to receive on-chain Bitcoin:
 
-- [`POST /v1/me/bitcoin/address`](https://api.numeraire.tech/docs#tag/user-wallet/POST/v1/me/bitcoin/address) — get a deposit address for your wallet.
+- [`POST /v1/me/wallets/{wallet_id}/bitcoin/addresses`](https://api.numeraire.tech/docs#tag/me/POST/v1/me/wallets/{wallet_id}/bitcoin/addresses) — get a deposit address for the selected wallet.
 
 ```bash
-curl -X POST https://your-instance:3000/v1/me/bitcoin/address \
+curl -X POST https://your-instance:3000/v1/me/wallets/<wallet-id>/bitcoin/addresses \
   -H 'Authorization: Bearer <jwt>' \
   -H 'Content-Type: application/json' \
   -d '{}'
@@ -156,18 +165,18 @@ The returned address stays the same until it is used on-chain, after which a new
 
 A single endpoint handles all outgoing payments. The recipient `input` can be a BOLT11 invoice, an LNURL, or a Lightning Address; payments to another wallet on the same instance are settled instantly through the internal ledger.
 
-- [`POST /v1/me/payments`](https://api.numeraire.tech/docs#tag/user-wallet/POST/v1/me/payments) — send a payment from your wallet.
-- [`GET /v1/me/payments`](https://api.numeraire.tech/docs#tag/user-wallet/GET/v1/me/payments) and [`GET /v1/me/payments/{id}`](https://api.numeraire.tech/docs#tag/user-wallet/GET/v1/me/payments/{id}) — list and look up payments.
+- [`POST /v1/me/wallets/{wallet_id}/payments`](https://api.numeraire.tech/docs#tag/me/POST/v1/me/wallets/{wallet_id}/payments) — send a payment from the selected wallet.
+- [`GET /v1/me/wallets/{wallet_id}/payments`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/wallets/{wallet_id}/payments) and [`GET /v1/me/wallets/{wallet_id}/payments/{id}`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/wallets/{wallet_id}/payments/{id}) — list and look up payments for that wallet.
 
 ```bash
 # Pay a BOLT11 invoice
-curl -X POST https://your-instance:3000/v1/me/payments \
+curl -X POST https://your-instance:3000/v1/me/wallets/<wallet-id>/payments \
   -H 'Authorization: Bearer <jwt>' \
   -H 'Content-Type: application/json' \
   -d '{ "input": "lnbc1..." }'
 
 # Pay a Lightning Address (amount required; the input has none)
-curl -X POST https://your-instance:3000/v1/me/payments \
+curl -X POST https://your-instance:3000/v1/me/wallets/<wallet-id>/payments \
   -H 'Authorization: Bearer <jwt>' \
   -H 'Content-Type: application/json' \
   -d '{ "input": "bob@example.com", "amount_msat": 100000, "comment": "Thanks!" }'
@@ -181,7 +190,7 @@ Notes on the request body:
 Sending requires the `write:transaction` permission; listing payments requires `read:transaction`.
 
 :::tip
-Admins can send on behalf of any wallet using the non-`/me` endpoint [`POST /v1/payments`](https://api.numeraire.tech/docs#tag/payments/POST/v1/payments) with a `wallet_id`. Most integrations should use `/v1/me/payments`.
+Admins can send on behalf of any wallet using the non-`/me` endpoint [`POST /v1/payments`](https://api.numeraire.tech/docs#tag/payments/POST/v1/payments) with a `wallet_id`. There is no default wallet fallback; the wallet selector is required.
 :::
 
 ## On-chain Bitcoin wallet
@@ -190,7 +199,7 @@ The on-chain wallet (available for self-hosted CLN and LND) supports address man
 
 ### Generating and managing addresses
 
-- [`POST /v1/me/bitcoin/address`](https://api.numeraire.tech/docs#tag/user-wallet/POST/v1/me/bitcoin/address) — generate/return a deposit address for your wallet (see [On-chain Bitcoin address](#on-chain-bitcoin-address) above).
+- [`POST /v1/me/wallets/{wallet_id}/bitcoin/addresses`](https://api.numeraire.tech/docs#tag/me/POST/v1/me/wallets/{wallet_id}/bitcoin/addresses) — generate/return a deposit address for the selected wallet (see [On-chain Bitcoin address](#on-chain-bitcoin-address) above).
 - [`GET /v1/bitcoin/addresses`](https://api.numeraire.tech/docs#tag/bitcoin-addresses/GET/v1/bitcoin/addresses) — list Bitcoin addresses (with filtering and pagination).
 - [`GET /v1/bitcoin/addresses/{id}`](https://api.numeraire.tech/docs#tag/bitcoin-addresses/GET/v1/bitcoin/addresses/{id}) — look up a single address.
 - [`DELETE /v1/bitcoin/addresses`](https://api.numeraire.tech/docs#tag/bitcoin-addresses/DELETE/v1/bitcoin/addresses) and [`DELETE /v1/bitcoin/addresses/{id}`](https://api.numeraire.tech/docs#tag/bitcoin-addresses/DELETE/v1/bitcoin/addresses/{id}) — delete addresses.
@@ -199,7 +208,7 @@ Each address record reports its `address`, `address_type`, and a `used` flag ind
 
 ### Wallet sync and transaction preparation
 
-SwissKnife synchronizes on-chain wallet state with your node so deposits are detected and balances stay current. Outgoing on-chain spends are **prepared before broadcast**, giving you a safe path to construct and review a transaction. On-chain spends are sent through the same payment flow as Lightning: pass an on-chain destination to [`POST /v1/me/payments`](https://api.numeraire.tech/docs#tag/user-wallet/POST/v1/me/payments).
+SwissKnife synchronizes on-chain wallet state with your node so deposits are detected and balances stay current. Outgoing on-chain spends are **prepared before broadcast**, giving you a safe path to construct and review a transaction. On-chain spends are sent through the same payment flow as Lightning: pass an on-chain destination to [`POST /v1/me/wallets/{wallet_id}/payments`](https://api.numeraire.tech/docs#tag/me/POST/v1/me/wallets/{wallet_id}/payments).
 
 :::note
 The on-chain wallet requires a self-hosted Core Lightning or LND provider and the `bitcoin_address_type` setting. See the [Lightning providers](../configuration/ln-providers.mdx) and [Configuration](../configuration/index.mdx) pages for setup.
@@ -209,9 +218,9 @@ The on-chain wallet requires a self-hosted Core Lightning or LND provider and th
 
 For automation and least-privilege integrations, create API keys instead of using the all-powerful sign-in JWT. Each key is scoped to a subset of permissions and can be revoked independently.
 
-- [`POST /v1/me/api-keys`](https://api.numeraire.tech/docs#tag/user-wallet/POST/v1/me/api-keys) — generate a key for your wallet.
-- [`GET /v1/me/api-keys`](https://api.numeraire.tech/docs#tag/user-wallet/GET/v1/me/api-keys) and [`GET /v1/me/api-keys/{id}`](https://api.numeraire.tech/docs#tag/user-wallet/GET/v1/me/api-keys/{id}) — list and look up keys.
-- [`DELETE /v1/me/api-keys`](https://api.numeraire.tech/docs#tag/user-wallet/DELETE/v1/me/api-keys) and [`DELETE /v1/me/api-keys/{id}`](https://api.numeraire.tech/docs#tag/user-wallet/DELETE/v1/me/api-keys/{id}) — revoke keys.
+- [`POST /v1/me/api-keys`](https://api.numeraire.tech/docs#tag/me/POST/v1/me/api-keys) — generate a key for your account.
+- [`GET /v1/me/api-keys`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/api-keys) and [`GET /v1/me/api-keys/{id}`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/api-keys/{id}) — list and look up keys.
+- [`DELETE /v1/me/api-keys`](https://api.numeraire.tech/docs#tag/me/DELETE/v1/me/api-keys) and [`DELETE /v1/me/api-keys/{id}`](https://api.numeraire.tech/docs#tag/me/DELETE/v1/me/api-keys/{id}) — revoke keys.
 
 ```bash
 curl -X POST https://your-instance:3000/v1/me/api-keys \
@@ -224,7 +233,7 @@ curl -X POST https://your-instance:3000/v1/me/api-keys \
   }'
 ```
 
-`name` and `permissions` are required; `description` and `expiry` (seconds) are optional. You can only grant a key permissions that are a subset of your own. The full `key` value is returned **only once on creation** — store it securely, as it cannot be retrieved again.
+`name` and `permissions` are required; `description` and `expiry` (seconds) are optional. API keys are account-scoped and can only receive permissions that are a subset of your own. Wallet operations still require the wallet ID in the request path. The full `key` value is returned **only once on creation** — store it securely, as it cannot be retrieved again.
 
 The available permission scopes are:
 
@@ -246,7 +255,7 @@ The available permission scopes are:
 Present the key in the `Api-Key` header on each request:
 
 ```bash
-curl https://your-instance:3000/v1/me/payments \
+curl https://your-instance:3000/v1/me/wallets/<wallet-id>/payments \
   -H 'Api-Key: YOUR_API_KEY' \
   -H 'Content-Type: application/json'
 ```

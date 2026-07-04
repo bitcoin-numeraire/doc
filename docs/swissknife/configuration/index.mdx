@@ -163,3 +163,19 @@ Config values for the database connection. To be placed under `database`.
 :::tip
 Use an ENV var for the `SWISSKNIFE_DATABASE__URL`.
 :::
+
+### Identity/assets migration
+
+The identity/assets release adds migration-only environment variables for converting the old
+wallet-as-user schema into account-owned, asset-scoped wallets. These values are read by database
+migrations, not by the steady-state application configuration.
+
+| ENV var | Description |
+| --- | --- |
+| `SWISSKNIFE_IDENTITY_MIGRATION_ACTIVE_BITCOIN_NETWORK` | Active native-BTC network used when legacy rows do not carry their own network, such as Bitcoin addresses, Lightning Addresses, or empty wallets. Accepted values are `mainnet`, `testnet`, `testnet4`, `regtest`, `simnet`, `signet`, and `bitcoin/...` forms. |
+| `SWISSKNIFE_IDENTITY_MIGRATION_TESTNET_NETWORK` | Required when migrating legacy `BitcoinTestnet` rows. Set to `testnet` or `testnet4`; the migration refuses to guess. |
+
+The identity backfill assumes legacy `wallet.user_id` values are Numeraire OAuth2/Auth0 subjects and writes `auth_identity(provider = "oauth2", subject = wallet.user_id)`.
+
+See the [identity/assets migration guide](../migrations/identity-assets.mdx) before deploying this
+breaking schema change.

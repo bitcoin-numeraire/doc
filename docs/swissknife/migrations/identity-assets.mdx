@@ -1,0 +1,108 @@
+---
+title: Identity and asset-wallet migration
+sidebar_position: 1
+image: /img/social.png
+---
+
+The identity/assets release implements [ADR 0002](https://github.com/bitcoin-numeraire/swissknife/blob/main/docs/adr/0002-identity-assets-wallet-model.md). It is a breaking migration: existing data is migrated forward, but the old wallet-as-user API contract is removed.
+
+After the migration, an account owns one or more wallets. Each wallet is a balance for one asset on one settlement network, such as native BTC on `bitcoin/mainnet`, native BTC on `bitcoin/regtest`, or a future Taproot Asset. Payments, invoices, Bitcoin addresses, and balances all attach to an explicit wallet.
+
+## What changes
+
+The old model treated `wallet.user_id` as both the user identity and the wallet. The new model separates:
+
+| Concept | Meaning |
+| --- | --- |
+| `account` | The owner and authorization boundary. |
+| `auth_identity` | The login identity from Numeraire's OAuth2/Auth0 subject. |
+| `asset` | A currency on a specific protocol/network, identified by `protocol`, `network`, and `asset_ref`. |
+| `wallet` | The spendable balance for exactly one `account` and one `asset`. |
+
+The migration removes the product contract for:
+
+- wallet-shaped `GET /v1/me` responses
+- unscoped `/v1/me/balance`, `/v1/me/payments`, `/v1/me/invoices`, `/v1/me/bitcoin/address`, and `/v1/me/bitcoin/addresses`
+- implicit admin wallet fallback on payment, invoice, and Bitcoin-address creation
+- `payment.currency` and `invoice.currency` as API fields
+- `wallet.user_id` and the legacy `wallet_balance` table
+
+## Required migration configuration
+
+Set the migration-only environment variables before starting a release that contains the identity/assets migrations.
+
+| Environment variable | Required when | Accepted values |
+| --- | --- | --- |
+| `SWISSKNIFE_IDENTITY_MIGRATION_ACTIVE_BITCOIN_NETWORK` | Old rows include Bitcoin addresses, Lightning addresses, or empty wallets that need an initial native-BTC wallet. | `mainnet`, `testnet`, `testnet4`, `regtest`, `simnet`, `signet`, or `bitcoin/...` forms |
+| `SWISSKNIFE_IDENTITY_MIGRATION_TESTNET_NETWORK` | Old rows include the legacy `BitcoinTestnet` currency. | `testnet`, `testnet4` |
+
+The migration refuses to guess between testnet3 and testnet4. If a historical database contains legacy `BitcoinTestnet` rows, set `SWISSKNIFE_IDENTITY_MIGRATION_TESTNET_NETWORK` explicitly.
+
+The backfill assumes the legacy `wallet.user_id` values come from Numeraire's OAuth2/Auth0 production deployment. It creates `auth_identity(provider = "oauth2", subject = wallet.user_id)` rows directly; no auth-provider migration environment variable is needed.
+
+Production mainnet deployments should set:
+
+```bash
+SWISSKNIFE_IDENTITY_MIGRATION_ACTIVE_BITCOIN_NETWORK=mainnet
+```
+
+## Data mapping
+
+The migration preserves existing wallets, balances, invoices, payments, addresses, API keys, and Lightning Addresses by moving them into the new ownership model:
+
+| Old data | New data |
+| --- | --- |
+| distinct `wallet.user_id` values | one `account` and one `auth_identity(provider = "oauth2", subject)` |
+| `wallet_balance(wallet_id, currency)` | one asset-scoped wallet for the matching native-BTC asset |
+| `payment.wallet_id + payment.currency` | `payment.wallet_id` pointing at the selected asset wallet |
+| `invoice.wallet_id + invoice.currency` | `invoice.wallet_id` pointing at the selected asset wallet |
+| `btc_address.wallet_id` | the account's native-BTC wallet for the active Bitcoin network |
+| `ln_address.wallet_id` | `ln_address.account_id` plus `receive_wallet_id` |
+| `api_key.user_id` | `api_key.account_id` |
+
+The migration does not backfill `account_permission` rows. OAuth2/Auth0 token claims remain authoritative for existing production accounts; the table is available for local credential and future account-permission management.
+
+## API migration
+
+Integrations must select a wallet explicitly for money-moving and wallet-balance operations.
+
+| Old endpoint | New endpoint |
+| --- | --- |
+| `GET /v1/me` | `GET /v1/me` returns an account profile |
+| `GET /v1/me/balance` | `GET /v1/me/wallets/{wallet_id}/balance` |
+| `GET /v1/me/payments` | `GET /v1/me/wallets/{wallet_id}/payments` |
+| `POST /v1/me/payments` | `POST /v1/me/wallets/{wallet_id}/payments` |
+| `GET /v1/me/invoices` | `GET /v1/me/wallets/{wallet_id}/invoices` |
+| `POST /v1/me/invoices` | `POST /v1/me/wallets/{wallet_id}/invoices` |
+| `POST /v1/me/bitcoin/address` | `POST /v1/me/wallets/{wallet_id}/bitcoin/addresses` |
+| `GET /v1/me/bitcoin/addresses` | `GET /v1/me/wallets/{wallet_id}/bitcoin/addresses` |
+
+Account-level endpoints remain under `/v1/me`:
+
+- `GET /v1/me/preferences`
+- `PUT /v1/me/preferences`
+- `GET /v1/me/wallets`
+- `POST /v1/me/wallets`
+- `GET /v1/me/lightning-address`
+- `POST /v1/me/lightning-address`
+- `PUT /v1/me/lightning-address`
+- `DELETE /v1/me/lightning-address`
+- `GET /v1/me/api-keys`
+- `POST /v1/me/api-keys`
+
+Registering a Lightning Address now requires a `receive_wallet_id`. The selected wallet must belong to the authenticated account and hold a native-BTC asset compatible with Lightning receiving.
+
+Admin creation endpoints also require explicit wallet selection. For example, `POST /v1/payments`, `POST /v1/invoices`, and Bitcoin-address creation requests must include `wallet_id`; the server no longer defaults those requests to the authenticated user's old wallet.
+
+## Deployment checklist
+
+1. Back up the database before deploying the release.
+2. Confirm the legacy data is from the Numeraire OAuth2/Auth0 deployment and record the Bitcoin network.
+3. Set the migration environment variables above.
+4. Run the migration in a staging environment with a copy of production data.
+5. Verify `GET /v1/me` returns an account profile.
+6. Verify `GET /v1/me/wallets` returns the expected asset wallets.
+7. Verify wallet balances through `GET /v1/me/wallets/{wallet_id}/balance`.
+8. Update integrations and API keys to use wallet-scoped paths.
+
+Rollback is database-restore based. Because the release drops the old API contract and physical columns, do not roll an old binary forward against a migrated database.

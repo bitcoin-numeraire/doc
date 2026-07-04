@@ -34,7 +34,7 @@ out a Lightning provider or database engine without touching domain code.
                                    │
             ┌──────────────────────▼──────────────────────┐
             │                  AppServices                  │   application
-            │  invoice · payment · wallet · lnurl · …       │   (composition root)
+            │  account · asset · wallet · payment · …       │   (composition root)
             └──────┬─────────────────────────────┬─────────┘
                    │ trait abstractions           │ trait abstractions
         ┌──────────▼──────────┐        ┌──────────▼──────────────┐
@@ -70,8 +70,10 @@ The domains in v0.2.0 are:
 | `lnurl` | Serve the LNURL-pay and `.well-known/lnurlp` flows. |
 | `nostr` | Serve NIP-05 identities via `.well-known/nostr.json`. |
 | `bitcoin` | On-chain wallet: address management, wallet sync, and transaction preparation. |
-| `wallet` | Per-user wallets and balances. |
-| `user` | Authentication, the initial Admin user, and scoped API keys. |
+| `account` | Account profiles, auth identities, preferences, and account-scoped dashboard settings. |
+| `asset` | Asset catalog entries such as native BTC on a specific Bitcoin network. |
+| `wallet` | Asset-scoped wallets and balances owned by accounts. |
+| `user` | Runtime authenticated principals and scoped API keys. |
 | `system` | Health probes, first-run setup state, and node configuration. |
 | `event` | Records domain events (e.g. settled invoices) for projections and reconciliation. |
 
@@ -124,9 +126,11 @@ The engine is chosen entirely by the `database.url` connection string; no code c
 needed. Schema migrations run automatically on startup, so a fresh database is brought
 up to date before the server begins accepting requests.
 
-Writes that must be atomic across multiple tables (such as recording a payment together with its
-ledger entries) go through dedicated unit-of-work abstractions (`PaymentUnitOfWork`,
-`EventProjectionUnitOfWork`) rather than independent repository calls.
+Wallet balances live on asset-scoped `wallet` rows. A wallet points at exactly one `asset`, and
+all reservations, debits, and credits mutate that wallet directly. Writes that must be atomic
+across multiple tables (such as recording a payment together with its wallet reservation) go
+through dedicated unit-of-work abstractions (`PaymentUnitOfWork`, `EventProjectionUnitOfWork`)
+rather than independent repository calls.
 
 ## Authentication and authorization
 
@@ -144,8 +148,8 @@ JWT or an `api-key` header. The selected `auth_provider` decides how a JWT is va
   it compatible with any OIDC-compliant identity provider.
 
 **API keys** offer a second credential type for programmatic access. A presented key is
-SHA-256-hashed and looked up in the store; the matching record carries both the wallet it belongs
-to and the set of permissions granted to it.
+SHA-256-hashed and looked up in the store; the matching record carries the account it belongs to
+and the set of permissions granted to it.
 
 **Authorization** answers "what may they do?" Authenticated callers carry a list of scoped
 **permissions** (for example `read:wallet`, `write:transaction`, `read:btc_address`,
@@ -172,6 +176,34 @@ SwissKnife runs two long-lived components, both started from `main`:
 The startup order is deliberate. The listener starts **first** and performs an initial invoice and
 payment sync, so the local state is reconciled with the node before the HTTP server begins
 accepting external requests.
+
+## Account and asset-wallet model
+
+SwissKnife separates identity from spendable balances. An `account` is the authorization boundary
+for a person or organization. An `auth_identity` records how that account signs in, such as a
+local JWT identity or an OAuth2 subject. A `wallet` is not an identity; it is one balance for one
+`asset`.
+
+Assets identify both the currency and the settlement network. Native BTC on mainnet, native BTC on
+regtest, and future Taproot Assets are different assets, even when their display code looks
+similar. Payment and invoice services derive denomination from the selected wallet's `asset_id`
+instead of trusting a request-supplied currency field.
+
+Authenticated account routes therefore use explicit wallet selection:
+
+```text
+GET /v1/me                    -> account profile
+GET /v1/me/wallets            -> account wallets
+GET /v1/me/wallets/{id}       -> one owned wallet
+GET /v1/me/wallets/{id}/balance
+POST /v1/me/wallets/{id}/payments
+POST /v1/me/wallets/{id}/invoices
+POST /v1/me/wallets/{id}/bitcoin/addresses
+```
+
+This is intentionally not backwards-compatible with the old wallet-shaped `/v1/me` behavior.
+Money-moving requests validate that the selected wallet belongs to the caller and that its asset
+matches the payment, invoice, or address network.
 
 ## Deployment topology
 
