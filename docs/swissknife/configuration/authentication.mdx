@@ -8,14 +8,14 @@ Numeraire SwissKnife supports multiple authentication methods:
 
 ## JWT (`auth_provider = "jwt"`)
 
-JWT authentication gives full access to an admin via the [`sign-in`](https://api.numeraire.tech/docs#tag/authentication/POST/v1/auth/sign-in) endpoint. It only requires `jwt.secret` to be set in the configuration file (and optionally `jwt.token_expiry`).
+JWT authentication gives the initial admin account full access via the [`sign-in`](https://api.numeraire.tech/docs#tag/authentication/POST/v1/auth/sign-in) endpoint. It only requires `jwt.secret` to be set in the configuration file (and optionally `jwt.token_expiry`).
 
-The admin password is not set in the configuration file. On first launch you set it through the [`sign-up`](https://api.numeraire.tech/docs#tag/authentication/POST/v1/auth/sign-up) endpoint, which stores it hashed in the database. The admin username is fixed as `admin`.
+The admin password is not set in the configuration file. On first launch you set it through the [`sign-up`](https://api.numeraire.tech/docs#tag/authentication/POST/v1/auth/sign-up) endpoint, which stores it hashed in the database. The local auth identity subject is fixed as `admin`.
 
 JWT authentication can also be used with third-party authentication providers that do not provide asymmetric keys (like Supabase).
 In this case, the `jwt.secret` value should be set in the configuration file.
 
-See the configuration values for JWT [here](swissknife/configuration/index.mdx#authentication).
+See the configuration values for JWT [here](./index.mdx#authentication).
 
 ## OAuth2 (`auth_provider = "oauth2"`)
 
@@ -23,13 +23,19 @@ OAuth2 authentication allows users to sign in with their OAuth2 provider. The `d
 
 `oauth2.domain` is the OpenID provider issuer base URL. Numeraire SwissKnife resolves the JWKS URI and the canonical issuer from this base via OpenID Connect (OIDC) discovery (the scheme defaults to `https` when omitted), so it works with any OIDC-compliant provider, not just Auth0. It will then automatically fetch the JWK Set in intervals (`jwks_refresh_interval`) from the provider and validate the JWT, enabling key rotation.
 
-See the configuration values for OAuth2 [here](swissknife/configuration/index.mdx#authentication).
+On the first authenticated request, the provider's `sub` is idempotently mapped to an account and
+that account's native-BTC wallet for the configured network is made available. Concurrent first
+requests resolve to the same account and wallet.
+
+See the configuration values for OAuth2 [here](./index.mdx#authentication).
 
 *Tested with [Auth0](https://auth0.com/)*.
 
 ## API keys
 
-In addition to JWT and OAuth2, requests can be authenticated with an API key. API keys are created per user with scoped permissions and are presented on each request, granting access limited to the key's permissions.
+In addition to JWT and OAuth2, requests can be authenticated with an API key. API keys are created
+per account and can always use that account's ownership-scoped `/v1/me` routes. Their permission
+array grants additional administrative API access.
 
 ## Not finding your preferred auth method?
 

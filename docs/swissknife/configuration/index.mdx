@@ -137,7 +137,7 @@ Numeraire SwissKnife supports OAuth2 and JWT authentication.
 | `jwt.secret`                   | Secret key for JWT authentication                |
 
 :::note
-With the `jwt` provider, the admin credential is **not** set in the configuration file. The single initial Admin user's password is established on first launch via the sign-up flow and stored hashed in the database. Only `jwt.secret` (and optionally `jwt.token_expiry`) are configured here.
+With the `jwt` provider, the admin credential is **not** set in the configuration file. The single initial Admin account's password is established on first launch via the sign-up flow and stored hashed in the database. Only `jwt.secret` (and optionally `jwt.token_expiry`) are configured here.
 :::
 
 :::tip
@@ -166,16 +166,9 @@ Use an ENV var for the `SWISSKNIFE_DATABASE__URL`.
 
 ### Identity/assets migration
 
-The identity/assets release adds migration-only environment variables for converting the old
-wallet-as-user schema into account-owned, asset-scoped wallets. These values are read by database
-migrations, not by the steady-state application configuration.
-
-| ENV var | Description |
-| --- | --- |
-| `SWISSKNIFE_IDENTITY_MIGRATION_ACTIVE_BITCOIN_NETWORK` | Active native-BTC network used when legacy rows do not carry their own network, such as Bitcoin addresses, Lightning Addresses, or empty wallets. Accepted values are `mainnet`, `testnet`, `testnet4`, `regtest`, `simnet`, `signet`, and `bitcoin/...` forms. |
-| `SWISSKNIFE_IDENTITY_MIGRATION_TESTNET_NETWORK` | Required when migrating legacy `BitcoinTestnet` rows. Set to `testnet` or `testnet4`; the migration refuses to guess. |
-
-The identity backfill assumes legacy `wallet.user_id` values are Numeraire OAuth2/Auth0 subjects and writes `auth_identity(provider = "oauth2", subject = wallet.user_id)`.
+The identity/assets release requires no migration-only environment variables. Its production
+backfill intentionally maps legacy Numeraire OAuth2/Auth0 subjects to native BTC mainnet wallets;
+it does not attempt to infer other providers, networks, currencies, or legacy API-key ownership.
 
 See the [identity/assets migration guide](../migrations/identity-assets.mdx) before deploying this
 breaking schema change.

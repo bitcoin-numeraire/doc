@@ -14,19 +14,19 @@ The `/v1/me` endpoints are the main access point for an authenticated account. A
 
 ## Signing in
 
-SwissKnife self-hosted is single-tenant by default: on first launch you create one initial **Admin user**. There is no static admin password in the configuration file; it is set once through the sign-up flow and stored hashed in the database.
+SwissKnife self-hosted is single-tenant by default: on first launch you create one initial **Admin account**. There is no static admin password in the configuration file; it is set once through the sign-up flow and stored hashed in the database.
 
 ### First launch (initial setup)
 
 When the dashboard starts, it checks setup status via [`GET /v1/system/setup`](https://api.numeraire.tech/docs#tag/system/GET/v1/system/setup), which returns:
 
 - `welcome_complete` — whether the welcome flow has been completed.
-- `sign_up_complete` — whether the Admin user has been created.
+- `sign_up_complete` — whether the Admin account has been created.
 
-Complete the welcome step (the dashboard calls [`POST /v1/system/mark-welcome-complete`](https://api.numeraire.tech/docs#tag/system/POST/v1/system/mark-welcome-complete)), then create the Admin user by setting a password. Sign-up only collects a password (entered and confirmed); there are no name, email, or profile fields.
+Complete the welcome step (the dashboard calls [`POST /v1/system/mark-welcome-complete`](https://api.numeraire.tech/docs#tag/system/POST/v1/system/mark-welcome-complete)), then create the Admin account by setting a password. Sign-up only collects a password (entered and confirmed); there are no name, email, or profile fields.
 
 ```bash
-# Create the initial Admin user (JWT auth provider only)
+# Create the initial Admin account (JWT auth provider only)
 curl -X POST https://your-instance:3000/v1/auth/sign-up \
   -H 'Content-Type: application/json' \
   -d '{ "password": "<your-admin-password>" }'
@@ -55,13 +55,16 @@ curl https://your-instance:3000/v1/me \
   -H 'Authorization: Bearer <jwt>'
 ```
 
-A JWT obtained through `sign-in` carries all permissions (the user acts as a superuser). For programmatic, least-privilege access, use [API keys](#managing-api-keys) instead.
+The initial local-JWT account is granted all administrative permissions. For programmatic access
+with independently revocable credentials and no unnecessary admin scopes, use
+[API keys](#managing-api-keys) instead.
 
 ## Checking your balance
 
 Fetch your account, list its wallets, then request the balance for the wallet you want to use:
 
 - [`GET /v1/me`](https://api.numeraire.tech/docs#tag/me/GET/v1/me) — your account profile.
+- [`PUT /v1/me`](https://api.numeraire.tech/docs#tag/me/PUT/v1/me) — update your account display name.
 - [`GET /v1/me/wallets`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/wallets) — wallets owned by your account.
 - [`GET /v1/me/wallets/{wallet_id}/balance`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/wallets/{wallet_id}/balance) — the selected wallet's balance breakdown.
 
@@ -83,7 +86,12 @@ Native BTC balances are reported in millisatoshis (`msat`) with these fields:
 | `sent_msat`      | Total amount sent (settled outgoing payments).   |
 | `fees_paid_msat` | Total routing/network fees paid.                 |
 
-Requires the `read:wallet` permission.
+Account-scoped `/v1/me` routes require authentication and enforce wallet ownership; they do not
+consume administrative permission scopes.
+
+The dashboard loads the full account wallet list into its account context. The wallet selector in
+the header controls every wallet-scoped page and persists `active_wallet_id` in your account
+preferences; changing wallets does not infer or silently fall back to the first wallet.
 
 ## Receiving
 
@@ -107,13 +115,14 @@ curl -X POST https://your-instance:3000/v1/me/wallets/<wallet-id>/invoices \
   }'
 ```
 
-Only `amount_msat` is required; `description` and `expiry` (seconds) are optional. Generating an invoice requires the `write:transaction` permission; listing requires `read:transaction`.
+Only `amount_msat` is required; `description` and `expiry` (seconds) are optional. The
+account-scoped routes authorize access through the authenticated account and wallet path.
 
 ### Your Lightning Address
 
 A Lightning Address (`username@your.domain`) lets anyone pay you using a human-readable identifier, the same way email works. The domain is configured per instance (see [Configuration](../configuration/index.mdx)).
 
-- [`POST /v1/me/lightning-address`](https://api.numeraire.tech/docs#tag/me/POST/v1/me/lightning-address) — register your address (`username`) and select the receiving wallet.
+- [`POST /v1/me/lightning-address`](https://api.numeraire.tech/docs#tag/me/POST/v1/me/lightning-address) — register your address (`username`).
 - [`GET /v1/me/lightning-address`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/lightning-address) — fetch your registered address.
 - [`PUT /v1/me/lightning-address`](https://api.numeraire.tech/docs#tag/me/PUT/v1/me/lightning-address) — update it (toggle `active`, Nostr settings).
 
@@ -123,13 +132,15 @@ curl -X POST https://your-instance:3000/v1/me/lightning-address \
   -H 'Content-Type: application/json' \
   -d '{
     "username": "alice",
-    "receive_wallet_id": "<wallet-id>",
     "allows_nostr": true,
     "nostr_pubkey": "<hex-pubkey>"
   }'
 ```
 
-Lightning Addresses are account-level handles, but each one routes incoming invoices to a concrete `receive_wallet_id`. The selected wallet must belong to your account and hold a Lightning-compatible native-BTC asset. Registering/updating requires `write:ln_address`; reading requires `read:ln_address`.
+Lightning Addresses are account-level handles. SwissKnife routes incoming invoices to the
+account's native-BTC wallet for the node's configured network; callers cannot select an
+incompatible network or a non-BTC asset. Account ownership authorizes the `/v1/me` registration,
+update, read, and delete routes.
 
 ### LNURL-pay
 
@@ -159,7 +170,7 @@ curl -X POST https://your-instance:3000/v1/me/wallets/<wallet-id>/bitcoin/addres
   -d '{}'
 ```
 
-The returned address stays the same until it is used on-chain, after which a new one is generated. You can optionally request a specific script `type` (`p2pkh`, `p2sh`, `p2wpkh`, or `p2tr`); when omitted, the instance default (`bitcoin_address_type`, defaults to `p2wpkh`) is used. This requires the `write:btc_address` permission. See the [on-chain wallet](#on-chain-bitcoin-wallet) section below for managing addresses.
+The returned address stays the same until it is used on-chain, after which a new one is generated. You can optionally request a specific script `type` (`p2pkh`, `p2sh`, `p2wpkh`, or `p2tr`); when omitted, the instance default (`bitcoin_address_type`, defaults to `p2wpkh`) is used. The account-scoped route enforces wallet ownership. See the [on-chain wallet](#on-chain-bitcoin-wallet) section below for managing addresses.
 
 ## Sending
 
@@ -187,7 +198,7 @@ Notes on the request body:
 - `input` is required. For a BOLT11 invoice that already encodes an amount, omit `amount_msat`; for an LNURL or Lightning Address, supply `amount_msat`.
 - `comment` is optional and is shown to the recipient for LNURL payments.
 
-Sending requires the `write:transaction` permission; listing payments requires `read:transaction`.
+The account-scoped send and list routes enforce ownership of the wallet in the path.
 
 :::tip
 Admins can send on behalf of any wallet using the non-`/me` endpoint [`POST /v1/payments`](https://api.numeraire.tech/docs#tag/payments/POST/v1/payments) with a `wallet_id`. There is no default wallet fallback; the wallet selector is required.
@@ -204,7 +215,7 @@ The on-chain wallet (available for self-hosted CLN and LND) supports address man
 - [`GET /v1/bitcoin/addresses/{id}`](https://api.numeraire.tech/docs#tag/bitcoin-addresses/GET/v1/bitcoin/addresses/{id}) — look up a single address.
 - [`DELETE /v1/bitcoin/addresses`](https://api.numeraire.tech/docs#tag/bitcoin-addresses/DELETE/v1/bitcoin/addresses) and [`DELETE /v1/bitcoin/addresses/{id}`](https://api.numeraire.tech/docs#tag/bitcoin-addresses/DELETE/v1/bitcoin/addresses/{id}) — delete addresses.
 
-Each address record reports its `address`, `address_type`, and a `used` flag indicating whether it has already received funds on-chain. Reading addresses requires `read:btc_address`; generating or deleting requires `write:btc_address`.
+Each address record reports its `address`, `address_type`, and a `used` flag indicating whether it has already received funds on-chain. The non-`/me` administrative list/get routes require `read:btc_address`, and administrative generation/deletion requires `write:btc_address`.
 
 ### Wallet sync and transaction preparation
 
@@ -214,9 +225,26 @@ SwissKnife synchronizes on-chain wallet state with your node so deposits are det
 The on-chain wallet requires a self-hosted Core Lightning or LND provider and the `bitcoin_address_type` setting. See the [Lightning providers](../configuration/ln-providers.mdx) and [Configuration](../configuration/index.mdx) pages for setup.
 :::
 
+## Managing accounts as an admin
+
+Administrative account routes live under `/v1/accounts`:
+
+- `POST /v1/accounts` creates or returns the account for a provider and subject.
+- `GET /v1/accounts` and `GET /v1/accounts/{id}` list or fetch account aggregates.
+- `PUT /v1/accounts/{id}` replaces the editable profile fields.
+- `PUT /v1/accounts/{id}/permissions` replaces permissions for a local JWT account.
+- `DELETE /v1/accounts/{id}` removes the account and its wallets, API keys, identities, preferences, and owned address data. The authenticated account cannot delete itself.
+
+Reading requires `read:account`; creation, updates, permission grants, and deletion require
+`write:account`. OAuth2/OIDC permissions come from the current token and cannot be written through
+the account API. Local JWT permissions are stored on the account and take effect on subsequent
+requests.
+
 ## Managing API keys
 
-For automation and least-privilege integrations, create API keys instead of using the all-powerful sign-in JWT. Each key is scoped to a subset of permissions and can be revoked independently.
+For automation, create API keys instead of using the all-powerful sign-in JWT. Every key can use
+the ownership-scoped `/v1/me` surface for its account. Its `permissions` array grants only
+additional administrative endpoints, and each key can be revoked independently.
 
 - [`POST /v1/me/api-keys`](https://api.numeraire.tech/docs#tag/me/POST/v1/me/api-keys) — generate a key for your account.
 - [`GET /v1/me/api-keys`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/api-keys) and [`GET /v1/me/api-keys/{id}`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/api-keys/{id}) — list and look up keys.
@@ -228,23 +256,29 @@ curl -X POST https://your-instance:3000/v1/me/api-keys \
   -H 'Content-Type: application/json' \
   -d '{
     "name": "payments-bot",
-    "permissions": ["read:wallet", "read:transaction", "write:transaction"],
+    "permissions": [],
     "expiry": 2592000
   }'
 ```
 
-`name` and `permissions` are required; `description` and `expiry` (seconds) are optional. API keys are account-scoped and can only receive permissions that are a subset of your own. Wallet operations still require the wallet ID in the request path. The full `key` value is returned **only once on creation** — store it securely, as it cannot be retrieved again.
+`name` and `permissions` are required; `description` and `expiry` (seconds) are optional. API keys
+are account-scoped and can only receive administrative permissions that are a subset of the
+creator's. An empty permission list still permits `/v1/me` account-wallet operations. Wallet
+operations require the wallet ID in the request path. The full `key` value is returned **only once
+on creation** — store it securely, as it cannot be retrieved again.
 
 The available permission scopes are:
 
-| Scope               | Grants                                            |
+| Scope               | Additional administrative access                 |
 | ------------------- | ------------------------------------------------- |
-| `read:wallet`       | Read wallet details and balance.                  |
-| `write:wallet`      | Create and manage wallets.                        |
-| `read:transaction`  | List and read invoices and payments.              |
-| `write:transaction` | Generate invoices and send payments.              |
-| `read:ln_address`   | Read Lightning Address details.                   |
-| `write:ln_address`  | Register and update Lightning Addresses.          |
+| `read:account`      | List and read account aggregates.                 |
+| `write:account`     | Create, update, grant, and delete accounts.       |
+| `read:wallet`       | Read wallets and balances across accounts.        |
+| `write:wallet`      | Create and manage wallets across accounts.        |
+| `read:transaction`  | List and read administrative invoices/payments.   |
+| `write:transaction` | Generate invoices and send administrative payments. |
+| `read:ln_address`   | Read administrative Lightning Address resources. |
+| `write:ln_address`  | Manage administrative Lightning Address resources. |
 | `read:ln_node`      | Read Lightning node information.                   |
 | `write:ln_node`     | Perform Lightning node operations.                |
 | `read:btc_address`  | Read on-chain Bitcoin addresses.                  |

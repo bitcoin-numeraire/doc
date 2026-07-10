@@ -4,16 +4,24 @@ sidebar_position: 4
 image: /img/social.png
 ---
 
-Numeraire SwissKnife has Role Based Access Control (RBAC) implemented for authorization.
-The permissions are added to the user's JWT token and are checked on each request.
+Numeraire SwissKnife combines account ownership with scoped administrative permissions.
+
+- `/v1/me` routes are scoped to the authenticated account and, where applicable, an owned wallet
+  ID in the path. They do not require administrative permission scopes.
+- Non-`/me` resource and `/v1/accounts` routes check the permission required for the operation.
 
 ## Permissions
 
-Permissions are defined in the `permissions` field of the user's JWT token.
-The permissions are a list of strings, each representing a permission and are checked against the requested endpoint and method.
+Permissions are a list of strings such as `read:account`, `write:account`, `read:wallet`, and
+`write:transaction`.
 
-It is the responsibility of the client's authentication provider (Auth0, Supabase, etc.) to add the permissions to the JWT token.
-When using the [`sign-in`](https://api.numeraire.tech/docs#tag/authentication/POST/v1/auth/sign-in) endpoint, all permissions are added to the JWT token, the user acting as a superuser.
+- For OAuth2/OIDC, the external provider (Auth0, Supabase, etc.) adds the effective permissions to
+  the token. Token claims are authoritative and cannot be replaced through the account API.
+- For local JWT, permissions are stored on the account. The initial account receives all
+  permissions, and an admin can replace another local account's grants through
+  `PUT /v1/accounts/{id}/permissions`.
+- API keys always retain the account-scoped `/v1/me` baseline. Their stored permission subset adds
+  administrative routes and can be revoked independently.
 
 ### Example
 
@@ -22,10 +30,10 @@ When using the [`sign-in`](https://api.numeraire.tech/docs#tag/authentication/PO
   "sub": "1234567890",
   ...,
   "permissions": [
-    "read:transactions"
+    "read:transaction"
   ]
 }
 ```
-In this example, the user has the permissions to read transactions.
+In this example, the caller can read invoices and payments.
 
 To see the permissions required for each endpoint, check the [API documentation](https://api.numeraire.tech/docs).

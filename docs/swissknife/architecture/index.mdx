@@ -70,10 +70,9 @@ The domains in v0.2.0 are:
 | `lnurl` | Serve the LNURL-pay and `.well-known/lnurlp` flows. |
 | `nostr` | Serve NIP-05 identities via `.well-known/nostr.json`. |
 | `bitcoin` | On-chain wallet: address management, wallet sync, and transaction preparation. |
-| `account` | Account profiles, auth identities, preferences, and account-scoped dashboard settings. |
+| `account` | Account profiles, auth identities, runtime principals, API keys, permissions, preferences, and dashboard settings. |
 | `asset` | Asset catalog entries such as native BTC on a specific Bitcoin network. |
 | `wallet` | Asset-scoped wallets and balances owned by accounts. |
-| `user` | Runtime authenticated principals and scoped API keys. |
 | `system` | Health probes, first-run setup state, and node configuration. |
 | `event` | Records domain events (e.g. settled invoices) for projections and reconciliation. |
 
@@ -140,7 +139,7 @@ Authentication and authorization are two distinct concerns in SwissKnife.
 JWT or an `api-key` header. The selected `auth_provider` decides how a JWT is validated:
 
 - **`jwt`** — local JWT auth. SwissKnife signs and verifies tokens with the configured
-  `jwt.secret`. There is a single initial **Admin** user whose password is set on first launch via
+  `jwt.secret`. There is a single initial **Admin** account whose password is set on first launch via
   the `/v1/auth/sign-up` flow (stored as a bcrypt hash in the database), not in any config file.
 - **`oauth2`** — delegated auth via any OpenID Connect provider. SwissKnife fetches the provider's
   OIDC discovery document from the configured issuer (`oauth2.domain`) to learn its JWKS URI and
@@ -151,11 +150,12 @@ JWT or an `api-key` header. The selected `auth_provider` decides how a JWT is va
 SHA-256-hashed and looked up in the store; the matching record carries the account it belongs to
 and the set of permissions granted to it.
 
-**Authorization** answers "what may they do?" Authenticated callers carry a list of scoped
-**permissions** (for example `read:wallet`, `write:transaction`, `read:btc_address`,
-`write:api_key`). Handlers check the required permission before acting, so an API key can be
-issued with exactly the scopes it needs and nothing more. The Admin user is granted all
-permissions.
+**Authorization** answers "what may they do?" The `/v1/me` surface is constrained by the
+authenticated account and explicit owned wallet IDs. Administrative resource routes additionally
+check scoped **permissions** such as `read:account`, `write:account`, `read:wallet`,
+`write:transaction`, `read:btc_address`, and `write:api_key`. OAuth2 requests use the current
+token's claims. Local JWT requests load permissions from the account row, while API keys use the
+key's own permission array. The initial Admin account is granted all permissions.
 
 ## The HTTP server and event listener
 
@@ -193,6 +193,7 @@ Authenticated account routes therefore use explicit wallet selection:
 
 ```text
 GET /v1/me                    -> account profile
+PUT /v1/me                    -> update display name
 GET /v1/me/wallets            -> account wallets
 GET /v1/me/wallets/{id}       -> one owned wallet
 GET /v1/me/wallets/{id}/balance
@@ -204,6 +205,10 @@ POST /v1/me/wallets/{id}/bitcoin/addresses
 This is intentionally not backwards-compatible with the old wallet-shaped `/v1/me` behavior.
 Money-moving requests validate that the selected wallet belongs to the caller and that its asset
 matches the payment, invoice, or address network.
+
+The dashboard keeps the account and wallet list in a shared context. Its header selector persists
+the active wallet ID in account preferences and hydrates related resources only for that selected
+wallet.
 
 ## Deployment topology
 
