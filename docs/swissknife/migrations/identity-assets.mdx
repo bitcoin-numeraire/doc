@@ -73,7 +73,7 @@ Integrations must select a wallet explicitly for money-moving and wallet-balance
 
 | Old endpoint | New endpoint |
 | --- | --- |
-| `GET /v1/me` | `GET /v1/me` returns an account profile |
+| `GET /v1/me` | `GET /v1/me` returns an account profile with lightweight wallets |
 | `GET /v1/me/balance` | `GET /v1/me/wallets/{wallet_id}/balance` |
 | `GET /v1/me/payments` | `GET /v1/me/wallets/{wallet_id}/payments` |
 | `POST /v1/me/payments` | `POST /v1/me/wallets/{wallet_id}/payments` |
@@ -106,7 +106,9 @@ Admin creation endpoints also require explicit wallet selection. For example, `P
 Administrative account management is available under `/v1/accounts`: create/list/get accounts,
 update `display_name`, replace permissions for local JWT accounts, and delete an account aggregate.
 These routes require `read:account` or `write:account`. OAuth2 permissions cannot be persisted by
-these endpoints because token claims are authoritative.
+these endpoints because token claims are authoritative. Account responses include wallet asset and
+balance data; callers fetch a wallet by ID when they need its payments, invoices, addresses, or
+contacts.
 
 ## Deployment checklist
 
@@ -115,7 +117,7 @@ these endpoints because token claims are authoritative.
 3. Confirm the legacy `api_key` table is empty.
 4. Run the migration in a staging environment with a copy of production data.
 5. Verify each legacy subject has one account, identity, preference row, and BTC mainnet wallet.
-6. Verify `GET /v1/me` returns an account profile.
+6. Verify `GET /v1/me` returns an account profile with the expected lightweight wallets.
 7. Verify `GET /v1/me/wallets` returns the expected asset wallets.
 8. Verify wallet balances through `GET /v1/me/wallets/{wallet_id}/balance`.
 9. Update integrations and create new API keys for wallet-scoped paths.

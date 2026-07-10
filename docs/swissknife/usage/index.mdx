@@ -61,9 +61,9 @@ with independently revocable credentials and no unnecessary admin scopes, use
 
 ## Checking your balance
 
-Fetch your account, list its wallets, then request the balance for the wallet you want to use:
+Fetch your account, select one of its wallets, then request the balance for that wallet:
 
-- [`GET /v1/me`](https://api.numeraire.tech/docs#tag/me/GET/v1/me) — your account profile.
+- [`GET /v1/me`](https://api.numeraire.tech/docs#tag/me/GET/v1/me) — your account profile and lightweight wallet list.
 - [`PUT /v1/me`](https://api.numeraire.tech/docs#tag/me/PUT/v1/me) — update your account display name.
 - [`GET /v1/me/wallets`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/wallets) — wallets owned by your account.
 - [`GET /v1/me/wallets/{wallet_id}/balance`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/wallets/{wallet_id}/balance) — the selected wallet's balance breakdown.
@@ -75,6 +75,10 @@ curl https://your-instance:3000/v1/me/wallets \
 curl https://your-instance:3000/v1/me/wallets/<wallet-id>/balance \
   -H 'Authorization: Bearer <jwt>'
 ```
+
+Wallets embedded in an account include asset metadata and balances, but omit payments, invoices,
+addresses, contacts, and other related resources. Fetch the selected wallet or one of its child
+routes by ID when that data is needed.
 
 Native BTC balances are reported in millisatoshis (`msat`) with these fields:
 
@@ -239,6 +243,9 @@ Reading requires `read:account`; creation, updates, permission grants, and delet
 `write:account`. OAuth2/OIDC permissions come from the current token and cannot be written through
 the account API. Local JWT permissions are stored on the account and take effect on subsequent
 requests.
+
+Account aggregates include the same lightweight wallet records used by the dashboard account and
+wallet selectors. Full wallet resources remain behind wallet-by-ID endpoints.
 
 ## Managing API keys
 

@@ -192,7 +192,7 @@ instead of trusting a request-supplied currency field.
 Authenticated account routes therefore use explicit wallet selection:
 
 ```text
-GET /v1/me                    -> account profile
+GET /v1/me                    -> account profile + lightweight wallets
 PUT /v1/me                    -> update display name
 GET /v1/me/wallets            -> account wallets
 GET /v1/me/wallets/{id}       -> one owned wallet
@@ -206,9 +206,10 @@ This is intentionally not backwards-compatible with the old wallet-shaped `/v1/m
 Money-moving requests validate that the selected wallet belongs to the caller and that its asset
 matches the payment, invoice, or address network.
 
-The dashboard keeps the account and wallet list in a shared context. Its header selector persists
-the active wallet ID in account preferences and hydrates related resources only for that selected
-wallet.
+The lightweight wallets embedded in `Account` include asset metadata and balances but leave
+payments, invoices, addresses, and contacts empty. The dashboard keeps this account aggregate in a
+shared context. Its header selector persists the active wallet ID in account preferences and
+hydrates related resources only for that selected wallet.
 
 ## Deployment topology
 
