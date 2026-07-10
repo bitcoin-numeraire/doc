@@ -189,6 +189,13 @@ regtest, and future Taproot Assets are different assets, even when their display
 similar. Payment and invoice services derive denomination from the selected wallet's `asset_id`
 instead of trusting a request-supplied currency field.
 
+One database may contain wallets for several networks at the same time. The configured Lightning
+or chain provider describes which settlement operations the running instance can currently
+perform; it does not limit the wallet catalog to one network. SwissKnife validates the selected
+wallet against the provider and payment or address network at the operation boundary, before it
+reserves funds or creates provider state. Wallets for another network therefore remain available
+for historical attribution or a future provider and do not prevent the instance from starting.
+
 Authenticated account routes therefore use explicit wallet selection:
 
 ```text
@@ -210,6 +217,10 @@ The lightweight wallets embedded in `Account` include asset metadata and balance
 payments, invoices, addresses, and contacts empty. The dashboard keeps this account aggregate in a
 shared context. Its header selector persists the active wallet ID in account preferences and
 hydrates related resources only for that selected wallet.
+
+Administrative navigation keeps ownership and balances distinct: the Account directory links to
+account details and their owned wallets, while the Wallet directory links each asset-scoped balance
+back to its account and to a full wallet view with related resources.
 
 ## Deployment topology
 
