@@ -233,7 +233,9 @@ The on-chain wallet requires a self-hosted Core Lightning or LND provider and th
 
 Administrative account routes live under `/v1/accounts`:
 
-- `POST /v1/accounts` creates or returns the account for a provider and subject.
+- `POST /v1/accounts` creates an identity-less account with an optional display name and an
+  initial permission set. It cannot sign in. JWT or OAuth2/OIDC authentication provisions separate
+  login-backed accounts; attaching a new identity to an admin-created account is not supported.
 - `GET /v1/accounts` and `GET /v1/accounts/{id}` list or fetch account aggregates.
 - `PUT /v1/accounts/{id}` replaces the editable profile fields.
 - `PUT /v1/accounts/{id}/permissions` replaces permissions for a local JWT account.
