@@ -8,7 +8,7 @@ Happy that you are interested in integrating and building on Bitcoin! We are her
 
 ## API Access
 
-Whether registering a [Numeraire Account](account/index.mdx) or deploying your own [Numeraire SwissKnife](swissknife/index.mdx), developers can access all the features via [API Keys](developers/api-keys.mdx) through the [REST API](https://api.numeraire.tech/docs). This includes the on-chain Bitcoin address API (`/v1/bitcoin/addresses` endpoints, gated by the `read:btc_address` and `write:btc_address` scopes).
+Whether registering a [Numeraire Account](../account/index.mdx) or deploying your own [Numeraire SwissKnife](../swissknife/index.mdx), developers can access all the features via [API Keys](./api-keys.mdx) through the [REST API](https://api.numeraire.tech/docs). Account-owned wallets are selected explicitly in account routes such as `/v1/me/wallets/{wallet_id}/payments`, and on-chain Bitcoin address APIs are gated by the `read:btc_address` and `write:btc_address` scopes.
 
 :::tip
 If you cannot find what you are looking for, we will be happy to discuss with you potential new features or improvements. Please reach out to us by opening a [**GitHub issue**](https://github.com/bitcoin-numeraire/swissknife/issues) or by contacting us on [**Twitter**](http://x.com/NumeraireBTC) or [**Nostr**](https://nostr.com/npub1m8pwckdf3n5lyd2m463ad3u4kk98qmwfs9s7hrmj6knd07frenlsfr0uje)

@@ -8,7 +8,7 @@ Integrate all functionalities provided by Numeraire into your applications, with
 
 API Keys are used to authenticate requests. They are generated in the [Dashboard](https://app.numeraire.tech) and can be used to access the API endpoints.
 When deploying your own Numeraire SwissKnife, you also have access to the API in the same way by connecting to your own instance.
-With the right permissions, you also access the API on behalf of other users as an admin, allowing you to behave as banking infrastructure for your users.
+With the right permissions, you also access the API on behalf of other accounts as an admin, allowing you to behave as banking infrastructure for your users.
 
 ## Generate an API token
 
@@ -30,7 +30,7 @@ With the right permissions, you also access the API on behalf of other users as 
   />
 </div>
 
-3. Fill in the form and select the permissions you want to grant. As user, you can only generate an API key to access your own account.
+3. Fill in the form and select any additional administrative permissions you want to grant. The key can always use your ownership-scoped `/v1/me` routes; wallet operations require an explicit wallet ID in the request path.
 4. Once the token is generated, copy it and store it in a safe place. You will not be able to see it again!
 
 ## Use your API token
@@ -38,7 +38,8 @@ With the right permissions, you also access the API on behalf of other users as 
 Once your API key is generated, you can pass the token in the `Api-Key` header of your requests.
 
 ```bash
-curl https://api.numeraire.tech/v1/payments -H 'Api-Key: YOUR_API_KEY'
+curl https://api.numeraire.tech/v1/me/wallets/YOUR_WALLET_ID/payments \
+  -H 'Api-Key: YOUR_API_KEY'
 ```
 
 :::tip

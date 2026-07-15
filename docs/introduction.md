@@ -15,6 +15,7 @@ Currently, Numeraire proposes different products and services for individuals an
 Registering a [Numeraire Account](account/index.mdx) allows you to:
 
 - Send and receive Bitcoin through the Lightning Network
+- Own one or more asset-scoped wallets
 - Register a LN and Nostr Address (*your_username@numeraire.tech*)
 - Send and Receive Zaps on Nostr
 - Access your account programmatically via API Keys
@@ -30,7 +31,7 @@ Registering an account and sending payments is free. Numeraire does not charge t
 
 [Numeraire SwissKnife](swissknife/index.mdx) is a wallet and transaction orchestrator enabling easy integration of Bitcoin, Lightning and Nostr to any entity that wishes so without the complexities of above technologies. Built in Rust.
 
-- Multi-user Bitcoin and Lightning wallet
+- Account-owned, asset-scoped Bitcoin and Lightning wallets
 - On-chain Bitcoin wallet (address management, wallet sync and transaction preparation) for self-hosted CLN/LND, distinct from the Lightning wallet
 - Register your own LN and Nostr Addresses (*your_username@your_domain.com*)
 - Connect to Core Lightning (CLN) and LND, each via gRPC and REST

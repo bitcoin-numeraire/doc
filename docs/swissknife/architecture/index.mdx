@@ -34,7 +34,7 @@ out a Lightning provider or database engine without touching domain code.
                                    │
             ┌──────────────────────▼──────────────────────┐
             │                  AppServices                  │   application
-            │  invoice · payment · wallet · lnurl · …       │   (composition root)
+            │  account · asset · wallet · payment · …       │   (composition root)
             └──────┬─────────────────────────────┬─────────┘
                    │ trait abstractions           │ trait abstractions
         ┌──────────▼──────────┐        ┌──────────▼──────────────┐
@@ -70,8 +70,9 @@ The domains in v0.2.0 are:
 | `lnurl` | Serve the LNURL-pay and `.well-known/lnurlp` flows. |
 | `nostr` | Serve NIP-05 identities via `.well-known/nostr.json`. |
 | `bitcoin` | On-chain wallet: address management, wallet sync, and transaction preparation. |
-| `wallet` | Per-user wallets and balances. |
-| `user` | Authentication, the initial Admin user, and scoped API keys. |
+| `account` | Account profiles, auth identities, runtime principals, API keys, permissions, preferences, and dashboard settings. |
+| `asset` | Asset catalog entries such as native BTC on a specific Bitcoin network. |
+| `wallet` | Asset-scoped wallets and balances owned by accounts. |
 | `system` | Health probes, first-run setup state, and node configuration. |
 | `event` | Records domain events (e.g. settled invoices) for projections and reconciliation. |
 
@@ -124,9 +125,11 @@ The engine is chosen entirely by the `database.url` connection string; no code c
 needed. Schema migrations run automatically on startup, so a fresh database is brought
 up to date before the server begins accepting requests.
 
-Writes that must be atomic across multiple tables (such as recording a payment together with its
-ledger entries) go through dedicated unit-of-work abstractions (`PaymentUnitOfWork`,
-`EventProjectionUnitOfWork`) rather than independent repository calls.
+Wallet balances live on asset-scoped `wallet` rows. A wallet points at exactly one `asset`, and
+all reservations, debits, and credits mutate that wallet directly. Writes that must be atomic
+across multiple tables (such as recording a payment together with its wallet reservation) go
+through dedicated unit-of-work abstractions (`PaymentUnitOfWork`, `EventProjectionUnitOfWork`)
+rather than independent repository calls.
 
 ## Authentication and authorization
 
@@ -136,7 +139,7 @@ Authentication and authorization are two distinct concerns in SwissKnife.
 JWT or an `api-key` header. The selected `auth_provider` decides how a JWT is validated:
 
 - **`jwt`** — local JWT auth. SwissKnife signs and verifies tokens with the configured
-  `jwt.secret`. There is a single initial **Admin** user whose password is set on first launch via
+  `jwt.secret`. There is a single initial **Admin** account whose password is set on first launch via
   the `/v1/auth/sign-up` flow (stored as a bcrypt hash in the database), not in any config file.
 - **`oauth2`** — delegated auth via any OpenID Connect provider. SwissKnife fetches the provider's
   OIDC discovery document from the configured issuer (`oauth2.domain`) to learn its JWKS URI and
@@ -144,14 +147,15 @@ JWT or an `api-key` header. The selected `auth_provider` decides how a JWT is va
   it compatible with any OIDC-compliant identity provider.
 
 **API keys** offer a second credential type for programmatic access. A presented key is
-SHA-256-hashed and looked up in the store; the matching record carries both the wallet it belongs
-to and the set of permissions granted to it.
+SHA-256-hashed and looked up in the store; the matching record carries the account it belongs to
+and the set of permissions granted to it.
 
-**Authorization** answers "what may they do?" Authenticated callers carry a list of scoped
-**permissions** (for example `read:wallet`, `write:transaction`, `read:btc_address`,
-`write:api_key`). Handlers check the required permission before acting, so an API key can be
-issued with exactly the scopes it needs and nothing more. The Admin user is granted all
-permissions.
+**Authorization** answers "what may they do?" The `/v1/me` surface is constrained by the
+authenticated account and explicit owned wallet IDs. Administrative resource routes additionally
+check scoped **permissions** such as `read:account`, `write:account`, `read:wallet`,
+`write:transaction`, `read:btc_address`, and `write:api_key`. OAuth2 requests use the current
+token's claims. Local JWT requests load permissions from the account row, while API keys use the
+key's own permission array. The initial Admin account is granted all permissions.
 
 ## The HTTP server and event listener
 
@@ -172,6 +176,51 @@ SwissKnife runs two long-lived components, both started from `main`:
 The startup order is deliberate. The listener starts **first** and performs an initial invoice and
 payment sync, so the local state is reconciled with the node before the HTTP server begins
 accepting external requests.
+
+## Account and asset-wallet model
+
+SwissKnife separates identity from spendable balances. An `account` is the authorization boundary
+for a person or organization. An `auth_identity` records how that account signs in, such as a
+local JWT identity or an OAuth2 subject. A `wallet` is not an identity; it is one balance for one
+`asset`.
+
+Assets identify both the currency and the settlement network. Native BTC on mainnet, native BTC on
+regtest, and future Taproot Assets are different assets, even when their display code looks
+similar. Payment and invoice services derive denomination from the selected wallet's `asset_id`
+instead of trusting a request-supplied currency field.
+
+One database may contain wallets for several networks at the same time. The configured Lightning
+or chain provider describes which settlement operations the running instance can currently
+perform; it does not limit the wallet catalog to one network. SwissKnife validates the selected
+wallet against the provider and payment or address network at the operation boundary, before it
+reserves funds or creates provider state. Wallets for another network therefore remain available
+for historical attribution or a future provider and do not prevent the instance from starting.
+
+Authenticated account routes therefore use explicit wallet selection:
+
+```text
+GET /v1/me                    -> account profile + lightweight wallets
+PUT /v1/me                    -> update display name
+GET /v1/me/wallets            -> account wallets
+GET /v1/me/wallets/{id}       -> one owned wallet
+GET /v1/me/wallets/{id}/balance
+POST /v1/me/wallets/{id}/payments
+POST /v1/me/wallets/{id}/invoices
+POST /v1/me/wallets/{id}/bitcoin/addresses
+```
+
+This is intentionally not backwards-compatible with the old wallet-shaped `/v1/me` behavior.
+Money-moving requests validate that the selected wallet belongs to the caller and that its asset
+matches the payment, invoice, or address network.
+
+The lightweight wallets embedded in `Account` include asset metadata and balances but leave
+payments, invoices, addresses, and contacts empty. The dashboard keeps this account aggregate in a
+shared context. Its header selector persists the active wallet ID in account preferences and
+hydrates related resources only for that selected wallet.
+
+Administrative navigation keeps ownership and balances distinct: the Account directory links to
+account details and their owned wallets, while the Wallet directory links each asset-scoped balance
+back to its account and to a full wallet view with related resources.
 
 ## Deployment topology
 
