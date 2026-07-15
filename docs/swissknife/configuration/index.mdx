@@ -163,12 +163,3 @@ Config values for the database connection. To be placed under `database`.
 :::tip
 Use an ENV var for the `SWISSKNIFE_DATABASE__URL`.
 :::
-
-### Identity/assets migration
-
-The identity/assets release requires no migration-only environment variables. Its production
-backfill intentionally maps legacy Numeraire OAuth2/Auth0 subjects to native BTC mainnet wallets;
-it does not attempt to infer other providers, networks, currencies, or legacy API-key ownership.
-
-See the [identity/assets migration guide](../migrations/identity-assets.mdx) before deploying this
-breaking schema change.

@@ -65,11 +65,6 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: "category",
-      label: "Migrations",
-      items: ["swissknife/migrations/identity-assets"],
-    },
-    {
-      type: "category",
       label: "Configuration",
       link: {
         type: "doc",

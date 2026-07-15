@@ -23,9 +23,7 @@ OAuth2 authentication allows users to sign in with their OAuth2 provider. The `d
 
 `oauth2.domain` is the OpenID provider issuer base URL. Numeraire SwissKnife resolves the JWKS URI and the canonical issuer from this base via OpenID Connect (OIDC) discovery (the scheme defaults to `https` when omitted), so it works with any OIDC-compliant provider, not just Auth0. It will then automatically fetch the JWK Set in intervals (`jwks_refresh_interval`) from the provider and validate the JWT, enabling key rotation.
 
-On the first authenticated request, the provider's `sub` is idempotently mapped to an account and
-that account's native-BTC wallet for the configured network is made available. Concurrent first
-requests resolve to the same account and wallet.
+On the first authenticated request, the provider's `sub` is idempotently mapped to an account and that account's native-BTC wallet for the configured network is made available. Concurrent first requests resolve to the same account and wallet.
 
 See the configuration values for OAuth2 [here](./index.mdx#authentication).
 
@@ -33,9 +31,7 @@ See the configuration values for OAuth2 [here](./index.mdx#authentication).
 
 ## API keys
 
-In addition to JWT and OAuth2, requests can be authenticated with an API key. API keys are created
-per account and can always use that account's ownership-scoped `/v1/me` routes. Their permission
-array grants additional administrative API access.
+In addition to JWT and OAuth2, requests can be authenticated with an API key. API keys are created per account and can always use that account's ownership-scoped `/v1/me` routes. Their permission array grants additional administrative API access.
 
 ## Not finding your preferred auth method?
 
