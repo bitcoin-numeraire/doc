@@ -6,7 +6,10 @@ FROM node:24.22.1 AS base
 ## Disable colour output from yarn to make logs easier to read.
 ENV FORCE_COLOR=0
 ## Enable corepack.
-RUN corepack enable
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
+    rm -rf /var/lib/apt/lists/* && \
+    corepack enable
 ## Set the working directory to `/opt/docusaurus`.
 WORKDIR /opt/docusaurus
 
