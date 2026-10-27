@@ -22,12 +22,14 @@ Permissions are a list of strings such as `read:account`, `write:account`, `read
 ```json
 {
   "sub": "1234567890",
-  ...,
-  "permissions": [
-    "read:transaction"
-  ]
+  "permissions": ["read:transaction"]
 }
 ```
+
 In this example, the caller can read invoices and payments.
 
 To see the permissions required for each endpoint, check the [API documentation](https://api.numeraire.tech/docs).
+
+## Upgrading to 0.3.0
+
+Define `read:account` and `write:account` on the Auth0 API and grant them to administrator roles. Keep existing grants, including `read:btc_address` and `write:btc_address` for administrative Bitcoin-address access. Sign in again to verify the effective permissions in a fresh access token. See the [upgrade guide](../deployment/upgrading.mdx).

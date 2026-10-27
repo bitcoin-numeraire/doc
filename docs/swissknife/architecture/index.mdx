@@ -60,21 +60,21 @@ Every domain is structured the same way, which makes the codebase predictable. T
   `infra`).
 - **`entities`** — the domain types.
 
-The domains in v0.2.0 are:
+The domains in v0.3.0 are:
 
-| Domain | Responsibility |
-| --- | --- |
-| `invoice` | Create and track incoming Lightning invoices. |
-| `payment` | Send Lightning payments and reconcile their status. |
-| `ln_address` | Manage [Lightning Addresses](https://lightningaddress.com/) (`username@your.domain`). |
-| `lnurl` | Serve the LNURL-pay and `.well-known/lnurlp` flows. |
-| `nostr` | Serve NIP-05 identities via `.well-known/nostr.json`. |
-| `bitcoin` | On-chain wallet: address management, wallet sync, and transaction preparation. |
-| `account` | Account profiles, auth identities, runtime principals, API keys, permissions, preferences, and dashboard settings. |
-| `asset` | Asset catalog entries such as native BTC on a specific Bitcoin network. |
-| `wallet` | Asset-scoped wallets and balances owned by accounts. |
-| `system` | Health probes, first-run setup state, and node configuration. |
-| `event` | Records domain events (e.g. settled invoices) for projections and reconciliation. |
+| Domain       | Responsibility                                                                                                     |
+| ------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `invoice`    | Create and track incoming Lightning invoices.                                                                      |
+| `payment`    | Send Lightning payments and reconcile their status.                                                                |
+| `ln_address` | Manage [Lightning Addresses](https://lightningaddress.com/) (`username@your.domain`).                              |
+| `lnurl`      | Serve the LNURL-pay and `.well-known/lnurlp` flows.                                                                |
+| `nostr`      | Serve NIP-05 identities via `.well-known/nostr.json`.                                                              |
+| `bitcoin`    | On-chain wallet: address management, wallet sync, and transaction preparation.                                     |
+| `account`    | Account profiles, auth identities, runtime principals, API keys, permissions, preferences, and dashboard settings. |
+| `asset`      | Asset catalog entries such as native BTC on a specific Bitcoin network.                                            |
+| `wallet`     | Asset-scoped wallets and balances owned by accounts.                                                               |
+| `system`     | Health probes, first-run setup state, and node configuration.                                                      |
+| `event`      | Records domain events (e.g. settled invoices) for projections and reconciliation.                                  |
 
 ## The Lightning provider abstraction
 
@@ -85,12 +85,12 @@ custodying funds itself. Domains never speak to a node directly — they depend 
 
 Four concrete implementations satisfy this trait, one per supported transport:
 
-| `ln_provider` value | Node | Transport |
-| --- | --- | --- |
-| `cln_grpc` | Core Lightning (CLN) | gRPC |
-| `cln_rest` | Core Lightning (CLN) | REST |
-| `lnd_grpc` | LND | gRPC |
-| `lnd_rest` | LND | REST |
+| `ln_provider` value | Node                 | Transport |
+| ------------------- | -------------------- | --------- |
+| `cln_grpc`          | Core Lightning (CLN) | gRPC      |
+| `cln_rest`          | Core Lightning (CLN) | REST      |
+| `lnd_grpc`          | LND                  | gRPC      |
+| `lnd_rest`          | LND                  | REST      |
 
 The composition root reads `ln_provider` at startup and constructs the matching client, so the
 rest of the application is unaware of which node or transport is in use. LND macaroons can be
@@ -98,7 +98,7 @@ supplied as either a raw binary file or a base64-encoded file — the client aut
 
 ### On-chain Bitcoin support
 
-v0.2.0 adds an integrated on-chain Bitcoin wallet for self-hosted CLN and LND. Each Lightning
+SwissKnife includes an integrated on-chain Bitcoin wallet for self-hosted CLN and LND. Each Lightning
 client also implements a `BitcoinWallet` trait that provides address derivation
 (`new_address`), wallet synchronization (`synchronize`), output lookup, and transaction
 **preparation** (`prepare_transaction`) followed by an explicit sign-and-broadcast step. The
@@ -159,7 +159,7 @@ key's own permission array. The initial Admin account is granted all permissions
 
 ## The HTTP server and event listener
 
-SwissKnife runs two long-lived components, both started from `main`:
+SwissKnife starts its HTTP server, node event listener, and client-event retention worker from `main`:
 
 1. **The Axum HTTP server** exposes the versioned REST API (`/v1/invoices`, `/v1/payments`,
    `/v1/wallets`, `/v1/me`, `/v1/auth`, `/v1/api-keys`, `/v1/lightning-addresses`,
@@ -221,6 +221,14 @@ hydrates related resources only for that selected wallet.
 Administrative navigation keeps ownership and balances distinct: the Account directory links to
 account details and their owned wallets, while the Wallet directory links each asset-scoped balance
 back to its account and to a full wallet view with related resources.
+
+## Durable client events
+
+Settlement commits append a client event in the same transaction as the invoice/payment and balance change. `GET /v1/me/events` streams only the authenticated account's events, with a wallet ID and durable cursor for reconnect replay. REST remains authoritative; the dashboard revalidates it after events and reconnects.
+
+Events are retained for 30 days by default and pruned hourly. A cursor older than the retained history returns HTTP 409 so the client can refresh REST state and reconnect. Existing terminal transactions are not backfilled, and webhooks remain future work.
+
+Provider liquidity is separate from wallet accounting. A node change does not cap or rewrite wallet balances. Unknown send outcomes keep reservations until reconciliation establishes a final result; the operator manages backing and any unresolved provider state.
 
 ## Deployment topology
 

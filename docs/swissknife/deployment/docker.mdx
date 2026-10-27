@@ -4,56 +4,40 @@ sidebar_position: 1
 image: /img/social.png
 ---
 
-SwissKnife images are published publicly on [Docker Hub](https://hub.docker.com/u/bitcoinnumeraire). Three images are available, each built for both `linux/amd64` and `linux/arm64`.
+SwissKnife publishes three images for `linux/amd64` and `linux/arm64` on [Docker Hub](https://hub.docker.com/u/bitcoinnumeraire):
 
-| Image | Contents | Port |
-| --- | --- | --- |
-| [`bitcoinnumeraire/swissknife`](https://hub.docker.com/r/bitcoinnumeraire/swissknife) | All-in-one: backend API + dashboard (static export served by the backend) | `3000` |
-| [`bitcoinnumeraire/swissknife-server`](https://hub.docker.com/r/bitcoinnumeraire/swissknife-server) | Backend API only (no dashboard) | `3000` |
-| [`bitcoinnumeraire/swissknife-dashboard`](https://hub.docker.com/r/bitcoinnumeraire/swissknife-dashboard) | Standalone Next.js dashboard (Node.js server) | `8080` |
+| Image                                         | Contents                     | Port   |
+| --------------------------------------------- | ---------------------------- | ------ |
+| `bitcoinnumeraire/swissknife:0.3.0`           | Backend and static dashboard | `3000` |
+| `bitcoinnumeraire/swissknife-server:0.3.0`    | Backend only                 | `3000` |
+| `bitcoinnumeraire/swissknife-dashboard:0.3.0` | Standalone Next.js dashboard | `8080` |
 
-Each image is published under the following tags:
+Pin a release tag or digest for deployment. Tags such as `0.3`, `0`, and `latest` can move when releases are published.
 
-- `0.2.0` — the exact release version
-- `0.2` — the latest patch of the `0.2` minor series
-- `0` — the latest minor of the `0` major series
-- `latest` — the most recent release
+## Configure before starting
 
-## Self-Contained Installation (Recommended)
+The backend requires a database, a reachable LND or CLN provider with its TLS credentials, and authentication configuration. It does not bundle a Lightning node. Use the [configuration guide](../configuration/index.mdx) to prepare a `swissknife.env` file and mount provider credentials at their configured paths.
 
-The all-in-one image bundles the backend API and the dashboard in a single container, served on port `3000`.
+For example, with the default SQLite path and credentials under `/certs`:
 
 ```bash
-docker pull bitcoinnumeraire/swissknife:latest
-docker run -p 3000:3000 bitcoinnumeraire/swissknife:latest
+mkdir -p storage certs
+docker run --env-file ./swissknife.env \
+  --mount type=bind,src="$PWD/storage",dst=/storage \
+  --mount type=bind,src="$PWD/certs",dst=/certs,readonly \
+  -p 3000:3000 bitcoinnumeraire/swissknife:0.3.0
 ```
 
-This image includes:
+Populate the credential directory and configure provider endpoints before running this command. Set a strong `SWISSKNIFE_JWT__SECRET` for the local JWT owner login, or configure OAuth2. For PostgreSQL, set `SWISSKNIFE_DATABASE__URL` and use the database's own persistent storage.
 
-- The Rust backend API server.
-- The Next.js dashboard (static export served by the backend).
-- The default configuration at `/config/default.toml`.
+## Configure the dashboard at build time
 
-## Separated Backend and Frontend
+The published dashboard uses the checked-in Numeraire Auth0 production profile. For your own API or identity provider, edit `dashboard/.env.production` before [building from source](./source.mdx). Use `NEXT_PUBLIC_AUTH_METHOD=jwt` for the local owner login, or `auth0` with your public Auth0 settings.
 
-For Kubernetes or microservices deployments, run the backend and dashboard as separate containers.
+Set `NEXT_PUBLIC_SERVER_URL` to the public API origin, or leave it empty for a same-origin bundle. These values are compiled into browser JavaScript; changing environment variables only on a running container does not reconfigure the dashboard. They must not contain private secrets.
 
-### Backend Only
+## Separate backend and dashboard
 
-```bash
-docker pull bitcoinnumeraire/swissknife-server:latest
-docker run -p 3000:3000 bitcoinnumeraire/swissknife-server:latest
-```
+The backend-only image sets `SWISSKNIFE_DASHBOARD_DIR=""`. The standalone dashboard serves on port `8080` and needs a build configured for the backend's public URL. [Kubernetes](./kubernetes.mdx) uses these two images.
 
-### Frontend Only (Standalone Next.js Server)
-
-```bash
-docker pull bitcoinnumeraire/swissknife-dashboard:latest
-docker run -p 8080:8080 bitcoinnumeraire/swissknife-dashboard:latest
-```
-
-When using a separated deployment:
-
-- Configure the dashboard to point to your backend API endpoint.
-- The backend runs without the dashboard (`SWISSKNIFE_DASHBOARD_DIR=""`).
-- The frontend runs as a standalone Node.js server on port `8080`.
+Read the [0.3.0 upgrade guide](./upgrading.mdx) before starting a new image against an existing database.

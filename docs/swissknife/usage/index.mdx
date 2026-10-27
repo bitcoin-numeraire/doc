@@ -82,13 +82,13 @@ routes by ID when that data is needed.
 
 Native BTC balances are reported in millisatoshis (`msat`) with these fields:
 
-| Field            | Meaning                                          |
-| ---------------- | ------------------------------------------------ |
-| `available_msat` | Amount available to spend.                       |
-| `reserved_msat`  | Amount reserved for pending outgoing payments.   |
-| `received_msat`  | Total amount received.                           |
-| `sent_msat`      | Total amount sent (settled outgoing payments).   |
-| `fees_paid_msat` | Total routing/network fees paid.                 |
+| Field            | Meaning                                        |
+| ---------------- | ---------------------------------------------- |
+| `available_msat` | Amount available to spend.                     |
+| `reserved_msat`  | Amount reserved for pending outgoing payments. |
+| `received_msat`  | Total amount received.                         |
+| `sent_msat`      | Total amount sent (settled outgoing payments). |
+| `fees_paid_msat` | Total routing/network fees paid.               |
 
 Account-scoped `/v1/me` routes require authentication and enforce wallet ownership; they do not
 consume administrative permission scopes.
@@ -208,6 +208,16 @@ The account-scoped send and list routes enforce ownership of the wallet in the p
 Admins can send on behalf of any wallet using the non-`/me` endpoint [`POST /v1/payments`](https://api.numeraire.tech/docs#tag/payments/POST/v1/payments) with a `wallet_id`. There is no default wallet fallback; the wallet selector is required.
 :::
 
+## Fee estimates and pending payments
+
+`POST /v1/me/wallets/{wallet_id}/payments/fee-estimate` accepts the same payment input as sending. Lightning quotes distinguish an optional estimated fee from the hard maximum enforced by the provider. On-chain quotes temporarily prepare and release a transaction; the actual send prepares again, so its final fee can differ. Internal transfers quote zero fees.
+
+An HTTP success response can contain a pending payment. If a Lightning send or on-chain broadcast has an unknown outcome, SwissKnife keeps its reservation instead of making the funds spendable again. A later node result can settle or fail the payment; some unresolved cases need manual reconciliation. Do not resend simply because the original HTTP request timed out.
+
+## Live settlement updates
+
+`GET /v1/me/events` provides authenticated account-wide SSE notifications for `invoice.pending`, `invoice.paid`, `payment.settled`, and `payment.failed`. The dashboard uses them to refresh wallet and transaction state. API clients reconnect with `Last-Event-ID`, deduplicate event IDs, and refresh REST state if the server returns HTTP 409 for an expired cursor. Delivery is at least once.
+
 ## On-chain Bitcoin wallet
 
 The on-chain wallet (available for self-hosted CLN and LND) supports address management, wallet synchronization, and transaction preparation before broadcast.
@@ -278,22 +288,22 @@ on creation** — store it securely, as it cannot be retrieved again.
 
 The available permission scopes are:
 
-| Scope               | Additional administrative access                 |
-| ------------------- | ------------------------------------------------- |
-| `read:account`      | List and read account aggregates.                 |
-| `write:account`     | Create, update, grant, and delete accounts.       |
-| `read:wallet`       | Read wallets and balances across accounts.        |
-| `write:wallet`      | Create and manage wallets across accounts.        |
-| `read:transaction`  | List and read administrative invoices/payments.   |
+| Scope               | Additional administrative access                    |
+| ------------------- | --------------------------------------------------- |
+| `read:account`      | List and read account aggregates.                   |
+| `write:account`     | Create, update, grant, and delete accounts.         |
+| `read:wallet`       | Read wallets and balances across accounts.          |
+| `write:wallet`      | Create and manage wallets across accounts.          |
+| `read:transaction`  | List and read administrative invoices/payments.     |
 | `write:transaction` | Generate invoices and send administrative payments. |
-| `read:ln_address`   | Read administrative Lightning Address resources. |
-| `write:ln_address`  | Manage administrative Lightning Address resources. |
-| `read:ln_node`      | Read Lightning node information.                   |
-| `write:ln_node`     | Perform Lightning node operations.                |
-| `read:btc_address`  | Read on-chain Bitcoin addresses.                  |
-| `write:btc_address` | Generate and delete on-chain Bitcoin addresses.   |
-| `read:api_key`      | List and read API keys.                           |
-| `write:api_key`     | Create and revoke API keys.                       |
+| `read:ln_address`   | Read administrative Lightning Address resources.    |
+| `write:ln_address`  | Manage administrative Lightning Address resources.  |
+| `read:ln_node`      | Read Lightning node information.                    |
+| `write:ln_node`     | Perform Lightning node operations.                  |
+| `read:btc_address`  | Read on-chain Bitcoin addresses.                    |
+| `write:btc_address` | Generate and delete on-chain Bitcoin addresses.     |
+| `read:api_key`      | List and read API keys.                             |
+| `write:api_key`     | Create and revoke API keys.                         |
 
 Present the key in the `Api-Key` header on each request:
 

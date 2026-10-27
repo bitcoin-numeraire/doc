@@ -4,50 +4,38 @@ sidebar_position: 3
 image: /img/social.png
 ---
 
-There are numerous ways to build Numeraire SwissKnife from source. You can either download the artifacts from the release
-page [here](https://github.com/bitcoin-numeraire/swissknife/releases) or clone the repository (we recommend checking out the desired release and not use `main` directly).
-
-:::note
-Releases are published as git tags of the form `vX.Y.Z`. The current release is **v0.2.0**, so check out `v0.2.0` (or the latest tag) rather than building from `main`:
+Build a release tag rather than an arbitrary `main` commit. The examples below target `v0.3.0`; tags and images become available when the release is published.
 
 ```bash
-git checkout v0.2.0
+git clone https://github.com/bitcoin-numeraire/swissknife.git
+cd swissknife
+git checkout v0.3.0
 ```
-:::
 
 ## Cargo
 
-A common way is to use the [`cargo`](https://doc.rust-lang.org/cargo/getting-started/installation.html) package manager, which is the Rust programming language's official package manager.
+Install the Rust toolchain pinned in `rust-toolchain.toml` and the Protocol Buffers compiler (`protoc`), then build:
 
 ```bash
-git clone git@github.com:bitcoin-numeraire/swissknife.git
-cd swissknife
-cargo build --release
+cargo build --locked --release
 ```
+
+Configure the database, Lightning provider, and authentication before running `target/release/swissknife`. The process automatically applies pending migrations at startup. A backend-only source build has no dashboard assets; set `SWISSKNIFE_DASHBOARD_DIR=""` if no static export is installed.
 
 ## Docker
 
-Another way is to use Docker. The Makefile provides three build targets, matching the three published images:
+Before building a dashboard, edit `dashboard/.env.production` with your public API URL and authentication settings. `NEXT_PUBLIC_*` values are compiled into the browser bundle; the checked-in profile targets Numeraire's hosted Auth0 deployment. For a bundled local-JWT setup, set `NEXT_PUBLIC_AUTH_METHOD=jwt` and leave `NEXT_PUBLIC_SERVER_URL` empty.
+
+The Makefile provides three build targets:
 
 ```bash
-git clone git@github.com:bitcoin-numeraire/swissknife.git
-cd swissknife
-
-# All-in-one: backend API + dashboard (static export served by the backend)
-make build-docker
-
-# Backend API only (--target swissknife-server)
-make build-docker-server
-
-# Standalone Next.js dashboard (-f dashboard/Dockerfile ./dashboard)
-make build-docker-dashboard
+make build-docker            # Backend and static dashboard
+make build-docker-server     # Backend only
+make build-docker-dashboard  # Standalone Next.js dashboard
 ```
 
-The all-in-one image serves the bundled dashboard static assets via `SWISSKNIFE_DASHBOARD_DIR`, while the `swissknife-server` image sets that variable to an empty string so the backend runs without the dashboard.
+These create local `swissknife:latest`, `swissknife-server:latest`, and `swissknife-dashboard:latest` images. See [Docker deployment](./docker.mdx) for runtime configuration, persistent storage, and credential mounts. Building an image does not configure or bundle a Lightning node.
 
-Once the all-in-one image is built, run it and map port `3000`, which is where the API and dashboard are served:
+## Dashboard development
 
-```bash
-docker run -p 3000:3000 swissknife:latest
-```
-
+Use Node 24 and the Yarn version pinned in `dashboard/package.json` through Corepack. The [dashboard README](https://github.com/bitcoin-numeraire/swissknife/blob/v0.3.0/dashboard/README.md) covers development, standalone and static builds, and configuration.
