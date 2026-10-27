@@ -39,5 +39,3 @@ Set `NEXT_PUBLIC_SERVER_URL` to the public API origin, or leave it empty for a s
 ## Separate backend and dashboard
 
 The backend-only image sets `SWISSKNIFE_DASHBOARD_DIR=""`. The standalone dashboard serves on port `8080` and needs a build configured for the backend's public URL. [Kubernetes](./kubernetes.mdx) uses these two images.
-
-Read the [0.3.0 upgrade guide](./upgrading.mdx) before starting a new image against an existing database.

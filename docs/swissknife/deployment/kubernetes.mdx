@@ -20,8 +20,6 @@ Kubernetes uses the separated images, not the all-in-one bundle:
 - The `dashboard` chart deploys the standalone `bitcoinnumeraire/swissknife-dashboard` Next.js image on port `8080`.
   :::
 
-## Upgrade to 0.3.0
+## Deployment configuration
 
-Use matching immutable backend and dashboard image tags, and update the charts' `version` and `appVersion` with the release. The account schema cutover is irreversible: stop all old backend replicas and take a fresh database backup before starting 0.3.0. Do not mix 0.2.0 and 0.3.0 backend pods against one database during a rolling upgrade.
-
-Read [Upgrading to 0.3.0](./upgrading.mdx) for Auth0 scopes, migration checks, SSE ingress behavior, and database-backed rollback. Dashboard public configuration is built into the image; pod environment variables alone do not change browser settings.
+Use matching immutable backend and dashboard image tags, and set the charts' `version` and `appVersion` for the release. Dashboard public configuration is built into the image; pod environment variables alone do not change browser settings. See [Docker configuration](./docker.mdx#configure-the-dashboard-at-build-time) before building your own dashboard.
