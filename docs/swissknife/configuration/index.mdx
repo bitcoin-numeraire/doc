@@ -6,7 +6,7 @@ image: /img/social.png
 
 Default configuration is defined in `config/default.toml`. SwissKnife supports `toml`, `yaml` and `json` config files. The order of applied configuration is the following:
 
-1. ENV vars. Defined given the names of the config values in `default.toml`, adding the prefix `SWISSKNIFE`. Overriding all sensitive values with ENV vars is recommended. For example, `SWISSKNIFE_DATABASE__URL` will override the `database_url` value in the config (underscores are replaced with double underscores).
+1. ENV vars. Defined given the names of the config values in `default.toml`, adding the prefix `SWISSKNIFE`. Overriding all sensitive values with ENV vars is recommended. For example, `SWISSKNIFE_DATABASE__URL` will override the `database.url` value in the config (nested keys are separated with double underscores).
 2. any file under `config` corresponding to the `RUN_MODE` (`development` by default). Such as `development.toml|yaml|json` or `production.toml|yaml|json`.
 3. The `default.toml|yaml|json` file.
 
@@ -20,57 +20,53 @@ On Kubernetes, you can use a `ConfigMap` to inject the configuration into the co
 
 Config values for the application's business logic. To be placed at the root.
 
-| Config Value       | Description                                      |
-|--------------------|--------------------------------------------------|
-| `invoice_expiry`   | Expiry time for generated invoices               |
-| `domain`           | Application's domain                             |
-| `host`             | API host URL                                     |
-| `fee_buffer`       | Buffer percentage for transaction fees           |
+| Config Value           | Description                                                                                |
+| ---------------------- | ------------------------------------------------------------------------------------------ |
+| `invoice_expiry`       | Expiry time for generated invoices                                                         |
+| `domain`               | Application's domain                                                                       |
+| `host`                 | API host URL                                                                               |
 | `bitcoin_address_type` | On-chain Bitcoin address script type (`p2pkh`, `p2sh`, `p2wpkh`, `p2tr`; default `p2wpkh`) |
-| `ln_provider`      | Lightning Network provider                       |
-| `auth_provider`    | Authentication provider                          |
-| `dashboard_dir`    | Filesystem path to the bundled dashboard static assets |
+| `ln_provider`          | Liquidity provider for Lightning and on-chain Bitcoin                                      |
+| `auth_provider`        | Authentication provider                                                                    |
+| `dashboard_dir`        | Filesystem path to the bundled dashboard static assets                                     |
 
 ### Web server
 
 Config values for the web server. To be placed under `web`.
 
-| Config Value       | Description                                      |
-|--------------------|--------------------------------------------------|
-| `web.addr`         | Web server bind address and port                 |
-| `web.request_timeout` | Request timeout duration                      |
+| Config Value          | Description                      |
+| --------------------- | -------------------------------- |
+| `web.addr`            | Web server bind address and port |
+| `web.request_timeout` | Request timeout duration         |
 
 ### Core Lightning provider (gRPC)
 
 Config values for [Core Lightning provider using gRPC](https://docs.corelightning.org/docs/grpc). To be placed under `cln_grpc_config`.
 
-| Config Value              | Description                                      |
-|---------------------------|--------------------------------------------------|
-| `cln_grpc_config.endpoint` | gRPC endpoint for Core Lightning                |
-| `cln_grpc_config.certs_dir`| Directory for Core Lightning certificates       |
-| `cln_grpc_config.maxfeepercent` | Maximum fee percentage for payments    |
-| `cln_grpc_config.payment_timeout` | Payment timeout duration              |
-| `cln_grpc_config.payment_exemptfee` | Exempt fee value for payments       |
+| Config Value                      | Description                                                                |
+| --------------------------------- | -------------------------------------------------------------------------- |
+| `cln_grpc_config.endpoint`        | gRPC endpoint for Core Lightning                                           |
+| `cln_grpc_config.certs_dir`       | Directory for Core Lightning certificates                                  |
+| `cln_grpc_config.maxfee`          | Optional absolute routing fee cap in msat; unset uses `max(1%, 5000 msat)` |
+| `cln_grpc_config.payment_timeout` | Payment timeout duration                                                   |
 
 ### Core Lightning provider (REST)
 
 Config values for [Core Lightning provider using REST](https://docs.corelightning.org/docs/rest). To be placed under `cln_rest_config`.
-Numeraire SwisskKnife uses runes and the websocket server to sync events from the node.
+Numeraire SwissKnife uses runes and the websocket server to sync events from the node.
 
-| Config Value                     | Description                                      |
-|----------------------------------|--------------------------------------------------|
-| `cln_rest_config.endpoint`       | REST endpoint for Core Lightning                 |
-| `cln_rest_config.ca_cert_path`   | File path to the TLS CA certificate (optional; needed when connecting over HTTPS) |
-| `cln_rest_config.rune`           | Rune value for Core Lightning                    |
-| `cln_rest_config.connect_timeout`| Connection timeout duration                      |
-| `cln_rest_config.timeout`        | Request timeout duration                         |
-| `cln_rest_config.connection_verbose` | Enable verbose connection logging         |
-| `cln_rest_config.accept_invalid_certs` | Accept invalid certificates              |
-| `cln_rest_config.accept_invalid_hostnames` | Accept invalid hostnames             |
-| `cln_rest_config.maxfeepercent`  | Maximum fee percentage for payments              |
-| `cln_rest_config.payment_timeout`| Payment timeout duration                         |
-| `cln_rest_config.payment_exemptfee` | Exempt fee value for payments              |
-
+| Config Value                               | Description                                                                       |
+| ------------------------------------------ | --------------------------------------------------------------------------------- |
+| `cln_rest_config.endpoint`                 | REST endpoint for Core Lightning                                                  |
+| `cln_rest_config.ca_cert_path`             | File path to the TLS CA certificate (optional; needed when connecting over HTTPS) |
+| `cln_rest_config.rune`                     | Rune value for Core Lightning                                                     |
+| `cln_rest_config.connect_timeout`          | Connection timeout duration                                                       |
+| `cln_rest_config.timeout`                  | Request timeout duration                                                          |
+| `cln_rest_config.connection_verbose`       | Enable verbose connection logging                                                 |
+| `cln_rest_config.accept_invalid_certs`     | Accept invalid certificates                                                       |
+| `cln_rest_config.accept_invalid_hostnames` | Accept invalid hostnames                                                          |
+| `cln_rest_config.maxfee`                   | Optional absolute routing fee cap in msat; unset uses `max(1%, 5000 msat)`        |
+| `cln_rest_config.payment_timeout`          | Payment timeout duration                                                          |
 
 :::tip
 Use an ENV var for `SWISSKNIFE_CLN_REST_CONFIG__RUNE`, as that value is highly sensitive.
@@ -80,61 +76,70 @@ Use an ENV var for `SWISSKNIFE_CLN_REST_CONFIG__RUNE`, as that value is highly s
 
 Config values for [LND provider using gRPC](https://lightning.engineering/api-docs/api/lnd/). To be placed under `lnd_grpc_config`.
 
-| Config Value                       | Description                                      |
-|------------------------------------|--------------------------------------------------|
-| `lnd_grpc_config.endpoint`         | gRPC endpoint for LND                            |
-| `lnd_grpc_config.cert_path`        | File path to the TLS certificate                 |
-| `lnd_grpc_config.macaroon_path`    | File path to the admin macaroon                  |
-| `lnd_grpc_config.fee_limit_msat`   | Maximum fee limit in millisatoshis for payments  |
-| `lnd_grpc_config.payment_timeout`  | Payment timeout duration                         |
-| `lnd_grpc_config.reorg_buffer_blocks` | Number of blocks to wait before considering an on-chain transaction confirmed (reorg safety) |
+| Config Value                          | Description                                                                                           |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `lnd_grpc_config.endpoint`            | gRPC endpoint for LND                                                                                 |
+| `lnd_grpc_config.cert_path`           | File path to the TLS certificate                                                                      |
+| `lnd_grpc_config.macaroon_path`       | File path to the admin macaroon                                                                       |
+| `lnd_grpc_config.fee_limit_msat`      | Maximum fee limit in millisatoshis for payments                                                       |
+| `lnd_grpc_config.payment_timeout`     | Payment timeout duration                                                                              |
+| `lnd_grpc_config.reorg_buffer_blocks` | Number of blocks to rewind the synchronization cursor when replaying node transactions (reorg safety) |
 
 ### LND provider (REST)
 
 Config values for [LND provider using REST](https://lightning.engineering/api-docs/api/lnd/). To be placed under `lnd_rest_config`.
 
-| Config Value                          | Description                                      |
-|---------------------------------------|--------------------------------------------------|
-| `lnd_rest_config.host`                | Host and port for LND REST API                   |
-| `lnd_rest_config.macaroon_path`       | File path to the admin macaroon                  |
-| `lnd_rest_config.ca_cert_path`        | File path to the TLS certificate (optional; needed when connecting over HTTPS) |
-| `lnd_rest_config.connect_timeout`     | Connection timeout duration                      |
-| `lnd_rest_config.timeout`             | Request timeout duration                         |
-| `lnd_rest_config.connection_verbose`  | Enable verbose connection logging                |
-| `lnd_rest_config.accept_invalid_certs`| Accept invalid certificates                      |
-| `lnd_rest_config.accept_invalid_hostnames` | Accept invalid hostnames                    |
-| `lnd_rest_config.payment_timeout`     | Payment timeout duration                         |
-| `lnd_rest_config.fee_limit_msat`      | Maximum fee limit in millisatoshis for payments  |
-| `lnd_rest_config.reorg_buffer_blocks` | Number of blocks to wait before considering an on-chain transaction confirmed (reorg safety) |
+| Config Value                               | Description                                                                                           |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `lnd_rest_config.host`                     | Host and port for LND REST API                                                                        |
+| `lnd_rest_config.macaroon_path`            | File path to the admin macaroon                                                                       |
+| `lnd_rest_config.ca_cert_path`             | File path to the TLS certificate (optional; needed when connecting over HTTPS)                        |
+| `lnd_rest_config.connect_timeout`          | Connection timeout duration                                                                           |
+| `lnd_rest_config.timeout`                  | Request timeout duration                                                                              |
+| `lnd_rest_config.connection_verbose`       | Enable verbose connection logging                                                                     |
+| `lnd_rest_config.accept_invalid_certs`     | Accept invalid certificates                                                                           |
+| `lnd_rest_config.accept_invalid_hostnames` | Accept invalid hostnames                                                                              |
+| `lnd_rest_config.payment_timeout`          | Payment timeout duration                                                                              |
+| `lnd_rest_config.fee_limit_msat`           | Maximum fee limit in millisatoshis for payments                                                       |
+| `lnd_rest_config.reorg_buffer_blocks`      | Number of blocks to rewind the synchronization cursor when replaying node transactions (reorg safety) |
+
+### Client settlement events
+
+| Config value                     | Description                                                    |
+| -------------------------------- | -------------------------------------------------------------- |
+| `client_events.retention`        | Minimum replay retention; default `30d`, `0s` disables pruning |
+| `client_events.cleanup_interval` | Pruning interval; default `1h`, `0s` disables the worker       |
+
+Default settings already enable the authenticated stream at `/v1/me/events`; no additional setup is required. These retention settings are optional. Configure reverse proxies for streaming responses without buffering. See [Events](../usage/events.mdx) for subscription and replay behavior.
 
 ### Logging
 
 Config values for logging. To be placed under `logging`.
 
-| Config Value          | Description                                      |
-|-----------------------|--------------------------------------------------|
-| `logging.format`      | Format of log output                             |
-| `logging.ansi`        | Enable ANSI colors in logs                       |
-| `logging.line_number` | Include line numbers in logs                     |
-| `logging.thread_ids`  | Include thread IDs in logs                       |
-| `logging.thread_names`| Include thread names in logs                     |
-| `logging.level`       | Logging level                                    |
-| `logging.filter`      | Logging filter rules                             |
-| `logging.file`        | Output logs to file                              |
+| Config Value           | Description                  |
+| ---------------------- | ---------------------------- |
+| `logging.format`       | Format of log output         |
+| `logging.ansi`         | Enable ANSI colors in logs   |
+| `logging.line_number`  | Include line numbers in logs |
+| `logging.thread_ids`   | Include thread IDs in logs   |
+| `logging.thread_names` | Include thread names in logs |
+| `logging.level`        | Logging level                |
+| `logging.filter`       | Logging filter rules         |
+| `logging.file`         | Output logs to file          |
 
 ### Authentication
 
 Config values for authentication. To be placed under `oauth2` or `jwt` depending on the choice of authentication.
 Numeraire SwissKnife supports OAuth2 and JWT authentication.
 
-| Config Value                   | Description                                      |
-|--------------------------------|--------------------------------------------------|
+| Config Value                   | Description                                                  |
+| ------------------------------ | ------------------------------------------------------------ |
 | `oauth2.domain`                | OpenID provider issuer base URL (e.g. `auth.numeraire.tech`) |
-| `oauth2.audience`              | OAuth2 audience                                  |
-| `oauth2.jwks_refresh_interval` | JWKS refresh interval                            |
-| `oauth2.leeway`                | Leeway time for token validation                 |
-| `jwt.token_expiry`             | JWT token expiry time                            |
-| `jwt.secret`                   | Secret key for JWT authentication                |
+| `oauth2.audience`              | OAuth2 audience                                              |
+| `oauth2.jwks_refresh_interval` | JWKS refresh interval                                        |
+| `oauth2.leeway`                | Leeway time for token validation                             |
+| `jwt.token_expiry`             | JWT token expiry time                                        |
+| `jwt.secret`                   | Secret key for JWT authentication                            |
 
 :::note
 With the `jwt` provider, the admin credential is **not** set in the configuration file. The single initial Admin account's password is established on first launch via the sign-up flow and stored hashed in the database. Only `jwt.secret` (and optionally `jwt.token_expiry`) are configured here.
@@ -148,17 +153,17 @@ Use an ENV var for `SWISSKNIFE_JWT__SECRET`, as this value is highly sensitive.
 
 Config values for the database connection. To be placed under `database`.
 
-| Config Value            | Description                                      |
-|-------------------------|--------------------------------------------------|
-| `database.url`          | Database connection string (required; PostgreSQL or SQLite) |
-| `database.max_lifetime` | Maximum connection lifetime                      |
-| `database.idle_timeout` | Idle timeout duration                            |
-| `database.max_connections` | Maximum number of connections                 |
-| `database.min_connections` | Minimum number of connections                 |
-| `database.acquire_timeout` | Timeout for acquiring a connection            |
-| `database.connect_timeout` | Timeout for establishing a connection         |
-| `database.sqlx_logging` | Enable SQLx logging                              |
-| `database.busy_timeout` | SQLite-only: how long a writer waits for the lock before failing (ignored for Postgres) |
+| Config Value               | Description                                                                             |
+| -------------------------- | --------------------------------------------------------------------------------------- |
+| `database.url`             | Database connection string (required; PostgreSQL or SQLite)                             |
+| `database.max_lifetime`    | Maximum connection lifetime                                                             |
+| `database.idle_timeout`    | Idle timeout duration                                                                   |
+| `database.max_connections` | Maximum number of connections                                                           |
+| `database.min_connections` | Minimum number of connections                                                           |
+| `database.acquire_timeout` | Timeout for acquiring a connection                                                      |
+| `database.connect_timeout` | Timeout for establishing a connection                                                   |
+| `database.sqlx_logging`    | Enable SQLx logging                                                                     |
+| `database.busy_timeout`    | SQLite-only: how long a writer waits for the lock before failing (ignored for Postgres) |
 
 :::tip
 Use an ENV var for the `SWISSKNIFE_DATABASE__URL`.

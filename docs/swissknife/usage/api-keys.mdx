@@ -1,0 +1,61 @@
+---
+title: API keys
+sidebar_position: 5
+image: /img/social.png
+---
+
+For automation, create API keys instead of using the all-powerful sign-in JWT. Every key can use
+the ownership-scoped `/v1/me` surface for its account. Its `permissions` array grants only
+additional administrative endpoints, and each key can be revoked independently.
+
+- [`POST /v1/me/api-keys`](https://api.numeraire.tech/docs#tag/me/POST/v1/me/api-keys) — generate a key for your account.
+- [`GET /v1/me/api-keys`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/api-keys) and [`GET /v1/me/api-keys/{id}`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/api-keys/{id}) — list and look up keys.
+- [`DELETE /v1/me/api-keys`](https://api.numeraire.tech/docs#tag/me/DELETE/v1/me/api-keys) and [`DELETE /v1/me/api-keys/{id}`](https://api.numeraire.tech/docs#tag/me/DELETE/v1/me/api-keys/{id}) — revoke keys.
+
+```bash
+curl -X POST https://your-instance:3000/v1/me/api-keys \
+  -H 'Authorization: Bearer <jwt>' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "payments-bot",
+    "permissions": [],
+    "expiry": 2592000
+  }'
+```
+
+`name` and `permissions` are required; `description` and `expiry` (seconds) are optional. API keys
+are account-scoped and can only receive administrative permissions that are a subset of the
+creator's. An empty permission list still permits `/v1/me` account-wallet operations. Wallet
+operations require the wallet ID in the request path. The full `key` value is returned **only once
+on creation** — store it securely, as it cannot be retrieved again.
+
+The available permission scopes are:
+
+| Scope               | Additional administrative access                    |
+| ------------------- | --------------------------------------------------- |
+| `read:account`      | List and read account aggregates.                   |
+| `write:account`     | Create, update, grant, and delete accounts.         |
+| `read:wallet`       | Read wallets and balances across accounts.          |
+| `write:wallet`      | Create and manage wallets across accounts.          |
+| `read:transaction`  | List and read administrative invoices/payments.     |
+| `write:transaction` | Generate invoices and send administrative payments. |
+| `read:ln_address`   | Read administrative Lightning Address resources.    |
+| `write:ln_address`  | Manage administrative Lightning Address resources.  |
+| `read:ln_node`      | Read Lightning node information.                    |
+| `write:ln_node`     | Perform Lightning node operations.                  |
+| `read:btc_address`  | Read on-chain Bitcoin addresses.                    |
+| `write:btc_address` | Generate and delete on-chain Bitcoin addresses.     |
+| `read:api_key`      | List and read API keys.                             |
+| `write:api_key`     | Create and revoke API keys.                         |
+
+Present the key in the `Api-Key` header on each request:
+
+```bash
+curl https://your-instance:3000/v1/me/wallets/<wallet-id>/payments \
+  -H 'Api-Key: YOUR_API_KEY' \
+  -H 'Content-Type: application/json'
+```
+
+:::tip
+Always send request bodies as JSON with the `Content-Type: application/json` header. For more on API keys and building integrations, see the [API Keys](../../developers/api-keys.mdx) developer guide.
+:::

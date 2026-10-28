@@ -1,0 +1,110 @@
+---
+title: Events
+sidebar_position: 3
+image: /img/social.png
+---
+
+Events notify an application when an invoice or payment changes state. The
+dashboard uses them to refresh balances and transaction history without polling
+for settlement. REST remains the source of truth for the current state.
+
+SwissKnife currently delivers events through **server-sent events (SSE)**.
+Webhook delivery is planned.
+
+## Subscribe over SSE
+
+Open `GET /v1/me/events` with a Bearer token or an `Api-Key` header, just as for
+other authenticated API requests:
+
+```bash
+curl --no-buffer --include https://your-instance:3000/v1/me/events \
+  -H 'Accept: text/event-stream' \
+  -H "Authorization: Bearer $SWISSKNIFE_TOKEN"
+```
+
+For an API key, replace the `Authorization` header with
+`Api-Key: YOUR_API_KEY`. No administrative permission scope is required. The
+stream includes all wallets owned by the authenticated account, and every event
+identifies its wallet with `wallet_id`.
+
+A successful response has content type `text/event-stream` and stays open. An
+idle stream sends a keep-alive comment every 15 seconds; keep-alives are not
+durable events and have no event ID. Stop the curl command with `Ctrl+C`.
+
+Use a client that supports SSE and authentication headers. Browser applications
+can use a fetch-based SSE client; the native `EventSource` API cannot set the
+`Authorization` or `Api-Key` header. Keep credentials in headers rather than URLs.
+
+## Event types and payloads
+
+| Event             | Meaning                                                |
+| ----------------- | ------------------------------------------------------ |
+| `invoice.pending` | The provider reported an unconfirmed on-chain deposit. |
+| `invoice.paid`    | An incoming invoice or deposit was credited.           |
+| `payment.settled` | An outgoing payment settled.                           |
+| `payment.failed`  | An outgoing payment was marked failed.                 |
+
+The SSE `id` is the replay cursor, and the SSE `event` is one of the names above.
+The SSE `data` contains a JSON `ClientEvent` object:
+
+| Field         | Contents                                                              |
+| ------------- | --------------------------------------------------------------------- |
+| `id`          | Event ID as a string, matching the SSE `id`.                          |
+| `event_type`  | Event name, matching the SSE `event`.                                 |
+| `wallet_id`   | Wallet whose state changed.                                           |
+| `resource_id` | Invoice or payment ID.                                                |
+| `data`        | Full public invoice or payment snapshot when the event was committed. |
+| `created_at`  | Event timestamp.                                                      |
+
+Each event is committed with its resource and balance update. Its snapshot
+describes that transition; fetch the REST resource when you need its latest state.
+
+An on-chain deposit keeps the same invoice ID as it moves from `invoice.pending`
+to `invoice.paid`. LND reports unconfirmed deposits. CLN currently discovers
+deposits after confirmation, so its first notification is `invoice.paid`.
+
+## Reconnect and replay
+
+A connection without a cursor starts after the account's latest retained event.
+It listens for new events rather than replaying all previous activity.
+
+Persist the last successfully handled event ID and send it on reconnect:
+
+```bash
+curl --no-buffer --include https://your-instance:3000/v1/me/events \
+  -H 'Accept: text/event-stream' \
+  -H "Authorization: Bearer $SWISSKNIFE_TOKEN" \
+  -H 'Last-Event-ID: 42'
+```
+
+The server replays events strictly after that ID, in increasing ID order. For
+deliberate replay, `?after=42` is an alternative; `Last-Event-ID` takes precedence
+when both are supplied. Event IDs are not consecutive within one account.
+
+Delivery is **at least once**. Deduplicate by event ID and persist the cursor only
+after handling the event. Reconnect after a network error or a clean stream end,
+and refresh REST state after each connection is established. Refreshing after the
+connection opens also covers changes between an initial REST read and subscribing.
+
+Open streams recheck authentication every 15 seconds. If a token expires or an
+API key is revoked, the stream closes. Obtain a valid credential before reconnecting.
+
+## Expired cursors and errors
+
+Events are retained for 30 days by default and pruned hourly. If a requested
+cursor is older than retained history, the endpoint returns **HTTP 409** before
+opening the stream. Refresh REST state, discard that cursor, and reconnect
+without `Last-Event-ID` or `after`. Pruning can also close an already-open stream,
+so handle clean stream endings as reconnects.
+
+Malformed or negative cursors return **HTTP 400**. Missing or invalid credentials
+return **HTTP 401**.
+
+## Configuration
+
+SSE is available with the default configuration. The optional
+[client-event settings](../configuration/index.mdx#client-settlement-events)
+control retention and cleanup; no separate event service is required.
+
+When using a reverse proxy, allow streaming responses, disable response
+buffering, and set an idle timeout longer than the 15-second heartbeat interval.

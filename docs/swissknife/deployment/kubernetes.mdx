@@ -18,4 +18,8 @@ Kubernetes uses the separated images, not the all-in-one bundle:
 
 - The `swissknife` chart deploys the API-only `bitcoinnumeraire/swissknife-server` image on port `3000`.
 - The `dashboard` chart deploys the standalone `bitcoinnumeraire/swissknife-dashboard` Next.js image on port `8080`.
-:::
+  :::
+
+## Deployment configuration
+
+Use matching immutable backend and dashboard image tags, and set the charts' `version` and `appVersion` for the release. Dashboard public configuration is built into the image; pod environment variables alone do not change browser settings. See [Docker configuration](./docker.mdx#configure-the-dashboard-at-build-time) before building your own dashboard.
