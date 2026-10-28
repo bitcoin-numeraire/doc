@@ -72,13 +72,26 @@ const sidebars: SidebarsConfig = {
       },
       items: [
         "swissknife/configuration/default",
-        "swissknife/configuration/ln-providers",
+        "swissknife/configuration/liquidity-providers",
         "swissknife/configuration/authentication",
         "swissknife/configuration/authorization",
         "swissknife/configuration/database",
       ],
     },
-    "swissknife/usage/index",
+    {
+      type: "category",
+      label: "Usage",
+      link: {
+        type: "doc",
+        id: "swissknife/usage/index",
+      },
+      items: [
+        "swissknife/usage/payments",
+        "swissknife/usage/events",
+        "swissknife/usage/accounts",
+        "swissknife/usage/api-keys",
+      ],
+    },
     "swissknife/architecture/index",
     "glossary",
     {
