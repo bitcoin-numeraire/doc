@@ -76,14 +76,14 @@ The domains in v0.3.0 are:
 | `system`     | Health probes, first-run setup state, and node configuration.                                                      |
 | `event`      | Records domain events (e.g. settled invoices) for projections and reconciliation.                                  |
 
-## The Lightning provider abstraction
+## The liquidity provider abstraction
 
 SwissKnife is bring-your-own-node: it connects to a Lightning node you run, rather than
-custodying funds itself. Domains never speak to a node directly — they depend on a single
-`LnClient` trait that exposes node-agnostic operations such as `invoice`, `pay`,
-`invoice_by_hash`, `payment_by_hash`, `cancel_invoice`, and `health`.
+custodying funds itself. Domains depend on `LnClient` for Lightning operations and
+`BitcoinWallet` for on-chain Bitcoin operations. The selected provider implements both
+interfaces, keeping node-specific RPCs in the infrastructure adapters.
 
-Four concrete implementations satisfy this trait, one per supported transport:
+Four concrete implementations provide these interfaces, one per supported transport:
 
 | `ln_provider` value | Node                 | Transport |
 | ------------------- | -------------------- | --------- |
@@ -95,6 +95,10 @@ Four concrete implementations satisfy this trait, one per supported transport:
 The composition root reads `ln_provider` at startup and constructs the matching client, so the
 rest of the application is unaware of which node or transport is in use. LND macaroons can be
 supplied as either a raw binary file or a base64-encoded file — the client auto-detects which.
+
+Provider liquidity is separate from wallet accounting. A node change does not cap or rewrite wallet balances. Unknown send outcomes keep reservations until reconciliation establishes a final result; the operator manages backing and any unresolved provider state.
+
+See [Liquidity Providers](../configuration/liquidity-providers.mdx) for connection settings.
 
 ### On-chain Bitcoin support
 
@@ -226,9 +230,7 @@ back to its account and to a full wallet view with related resources.
 
 Settlement commits append a client event in the same transaction as the invoice/payment and balance change. `GET /v1/me/events` streams only the authenticated account's events, with a wallet ID and durable cursor for reconnect replay. REST remains authoritative; the dashboard revalidates it after events and reconnects.
 
-Events are retained for 30 days by default and pruned hourly. A cursor older than the retained history returns HTTP 409 so the client can refresh REST state and reconnect. Existing terminal transactions are not backfilled, and webhooks remain future work.
-
-Provider liquidity is separate from wallet accounting. A node change does not cap or rewrite wallet balances. Unknown send outcomes keep reservations until reconciliation establishes a final result; the operator manages backing and any unresolved provider state.
+The [Events usage guide](../usage/events.mdx) covers authentication, event types, replay, and reconnect handling. Optional retention settings are listed under [Configuration](../configuration/index.mdx#client-settlement-events).
 
 ## Deployment topology
 

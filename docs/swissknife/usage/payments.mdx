@@ -1,0 +1,143 @@
+---
+title: Payments
+sidebar_position: 2
+image: /img/social.png
+---
+
+## Receiving
+
+SwissKnife can receive funds over Lightning (invoices, your Lightning Address, LNURL-pay, and Nostr Zaps) and on-chain Bitcoin.
+
+### Lightning invoices
+
+Generate a BOLT11 invoice for a specific amount:
+
+- [`POST /v1/me/wallets/{wallet_id}/invoices`](https://api.numeraire.tech/docs#tag/me/POST/v1/me/wallets/{wallet_id}/invoices) — generate an invoice for the selected wallet.
+- [`GET /v1/me/wallets/{wallet_id}/invoices`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/wallets/{wallet_id}/invoices) and [`GET /v1/me/wallets/{wallet_id}/invoices/{id}`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/wallets/{wallet_id}/invoices/{id}) — list and look up invoices for that wallet.
+
+```bash
+curl -X POST https://your-instance:3000/v1/me/wallets/<wallet-id>/invoices \
+  -H 'Authorization: Bearer <jwt>' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "amount_msat": 100000,
+    "description": "Coffee",
+    "expiry": 3600
+  }'
+```
+
+Only `amount_msat` is required; `description` and `expiry` (seconds) are optional. The
+account-scoped routes authorize access through the authenticated account and wallet path.
+
+### Your Lightning Address
+
+A Lightning Address (`username@your.domain`) lets anyone pay you using a human-readable identifier, the same way email works. The domain is configured per instance (see [Configuration](../configuration/index.mdx)).
+
+- [`POST /v1/me/lightning-address`](https://api.numeraire.tech/docs#tag/me/POST/v1/me/lightning-address) — register your address (`username`).
+- [`GET /v1/me/lightning-address`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/lightning-address) — fetch your registered address.
+- [`PUT /v1/me/lightning-address`](https://api.numeraire.tech/docs#tag/me/PUT/v1/me/lightning-address) — update it (toggle `active`, Nostr settings).
+
+```bash
+curl -X POST https://your-instance:3000/v1/me/lightning-address \
+  -H 'Authorization: Bearer <jwt>' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "username": "alice",
+    "allows_nostr": true,
+    "nostr_pubkey": "<hex-pubkey>"
+  }'
+```
+
+Lightning Addresses are account-level handles. SwissKnife routes incoming invoices to the
+account's native-BTC wallet for the node's configured network; callers cannot select an
+incompatible network or a non-BTC asset. Account ownership authorizes the `/v1/me` registration,
+update, read, and delete routes.
+
+### LNURL-pay
+
+Each registered Lightning Address is served over LNURL-pay at well-known, unauthenticated endpoints that any LNURL-capable wallet can resolve:
+
+- [`GET /.well-known/lnurlp/{username}`](https://api.numeraire.tech/docs#tag/lnurl/GET/.well-known/lnurlp/{username}) — returns the LNURL `payRequest` for the address.
+- [`GET /lnurlp/{username}/callback`](https://api.numeraire.tech/docs#tag/lnurl/GET/lnurlp/{username}/callback) — returns an invoice for the requested amount.
+
+You do not call these yourself; they are what a sender's wallet hits when paying `username@your.domain`.
+
+### Nostr (NIP-05 and Zaps)
+
+When a Lightning Address is registered with `allows_nostr: true` and a `nostr_pubkey`, SwissKnife also serves NIP-05 verification and enables Lightning Zaps for that identifier:
+
+- [`GET /.well-known/nostr.json`](https://api.numeraire.tech/docs#tag/nostr/GET/.well-known/nostr.json) — maps the username to its Nostr public key (hex), satisfying [NIP-05](https://github.com/nostr-protocol/nips/blob/master/05.md).
+
+### On-chain Bitcoin address
+
+For self-hosted CLN and LND setups, SwissKnife includes an integrated on-chain wallet. Generate a deposit address to receive on-chain Bitcoin:
+
+- [`POST /v1/me/wallets/{wallet_id}/bitcoin/addresses`](https://api.numeraire.tech/docs#tag/me/POST/v1/me/wallets/{wallet_id}/bitcoin/addresses) — get a deposit address for the selected wallet.
+
+```bash
+curl -X POST https://your-instance:3000/v1/me/wallets/<wallet-id>/bitcoin/addresses \
+  -H 'Authorization: Bearer <jwt>' \
+  -H 'Content-Type: application/json' \
+  -d '{}'
+```
+
+The returned address stays the same until it is used on-chain, after which a new one is generated. You can optionally request a specific script `type` (`p2pkh`, `p2sh`, `p2wpkh`, or `p2tr`); when omitted, the instance default (`bitcoin_address_type`, defaults to `p2wpkh`) is used. The account-scoped route enforces wallet ownership. See the [on-chain wallet](#on-chain-bitcoin-wallet) section below for managing addresses.
+
+## Sending
+
+A single endpoint handles all outgoing payments. The recipient `input` can be a BOLT11 invoice, an LNURL, or a Lightning Address; payments to another wallet on the same instance are settled instantly through the internal ledger.
+
+- [`POST /v1/me/wallets/{wallet_id}/payments`](https://api.numeraire.tech/docs#tag/me/POST/v1/me/wallets/{wallet_id}/payments) — send a payment from the selected wallet.
+- [`GET /v1/me/wallets/{wallet_id}/payments`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/wallets/{wallet_id}/payments) and [`GET /v1/me/wallets/{wallet_id}/payments/{id}`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/wallets/{wallet_id}/payments/{id}) — list and look up payments for that wallet.
+
+```bash
+# Pay a BOLT11 invoice
+curl -X POST https://your-instance:3000/v1/me/wallets/<wallet-id>/payments \
+  -H 'Authorization: Bearer <jwt>' \
+  -H 'Content-Type: application/json' \
+  -d '{ "input": "lnbc1..." }'
+
+# Pay a Lightning Address (amount required; the input has none)
+curl -X POST https://your-instance:3000/v1/me/wallets/<wallet-id>/payments \
+  -H 'Authorization: Bearer <jwt>' \
+  -H 'Content-Type: application/json' \
+  -d '{ "input": "bob@example.com", "amount_msat": 100000, "comment": "Thanks!" }'
+```
+
+Notes on the request body:
+
+- `input` is required. For a BOLT11 invoice that already encodes an amount, omit `amount_msat`; for an LNURL or Lightning Address, supply `amount_msat`.
+- `comment` is optional and is shown to the recipient for LNURL payments.
+
+The account-scoped send and list routes enforce ownership of the wallet in the path.
+
+:::tip
+Admins can send on behalf of any wallet using the non-`/me` endpoint [`POST /v1/payments`](https://api.numeraire.tech/docs#tag/payments/POST/v1/payments) with a `wallet_id`. There is no default wallet fallback; the wallet selector is required.
+:::
+
+## Fee estimates and pending payments
+
+`POST /v1/me/wallets/{wallet_id}/payments/fee-estimate` accepts the same payment input as sending. Lightning quotes distinguish an optional estimated fee from the hard maximum enforced by the provider. On-chain quotes temporarily prepare and release a transaction; the actual send prepares again, so its final fee can differ. Internal transfers quote zero fees.
+
+An HTTP success response can contain a pending payment. If a Lightning send or on-chain broadcast has an unknown outcome, SwissKnife keeps its reservation instead of making the funds spendable again. A later node result can settle or fail the payment; some unresolved cases need manual reconciliation. Do not resend simply because the original HTTP request timed out.
+
+## On-chain Bitcoin wallet
+
+The on-chain wallet (available for self-hosted CLN and LND) supports address management, wallet synchronization, and transaction preparation before broadcast.
+
+### Generating and managing addresses
+
+- [`POST /v1/me/wallets/{wallet_id}/bitcoin/addresses`](https://api.numeraire.tech/docs#tag/me/POST/v1/me/wallets/{wallet_id}/bitcoin/addresses) — generate/return a deposit address for the selected wallet (see [On-chain Bitcoin address](#on-chain-bitcoin-address) above).
+- [`GET /v1/bitcoin/addresses`](https://api.numeraire.tech/docs#tag/bitcoin-addresses/GET/v1/bitcoin/addresses) — list Bitcoin addresses (with filtering and pagination).
+- [`GET /v1/bitcoin/addresses/{id}`](https://api.numeraire.tech/docs#tag/bitcoin-addresses/GET/v1/bitcoin/addresses/{id}) — look up a single address.
+- [`DELETE /v1/bitcoin/addresses`](https://api.numeraire.tech/docs#tag/bitcoin-addresses/DELETE/v1/bitcoin/addresses) and [`DELETE /v1/bitcoin/addresses/{id}`](https://api.numeraire.tech/docs#tag/bitcoin-addresses/DELETE/v1/bitcoin/addresses/{id}) — delete addresses.
+
+Each address record reports its `address`, `address_type`, and a `used` flag indicating whether it has already received funds on-chain. The non-`/me` administrative list/get routes require `read:btc_address`, and administrative generation/deletion requires `write:btc_address`.
+
+### Wallet sync and transaction preparation
+
+SwissKnife synchronizes on-chain wallet state with your node so deposits are detected and balances stay current. Outgoing on-chain spends are **prepared before broadcast**, giving you a safe path to construct and review a transaction. On-chain spends are sent through the same payment flow as Lightning: pass an on-chain destination to [`POST /v1/me/wallets/{wallet_id}/payments`](https://api.numeraire.tech/docs#tag/me/POST/v1/me/wallets/{wallet_id}/payments).
+
+:::note
+The on-chain wallet requires a self-hosted Core Lightning or LND provider and the `bitcoin_address_type` setting. See the [Liquidity providers](../configuration/liquidity-providers.mdx) and [Configuration](../configuration/index.mdx) pages for setup.
+:::

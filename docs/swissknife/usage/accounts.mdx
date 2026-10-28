@@ -1,0 +1,23 @@
+---
+title: Account administration
+sidebar_position: 4
+image: /img/social.png
+---
+
+Administrative account routes live under `/v1/accounts`:
+
+- `POST /v1/accounts` creates an identity-less account with an optional display name and an
+  initial permission set. It cannot sign in. JWT or OAuth2/OIDC authentication provisions separate
+  login-backed accounts; attaching a new identity to an admin-created account is not supported.
+- `GET /v1/accounts` and `GET /v1/accounts/{id}` list or fetch account aggregates.
+- `PUT /v1/accounts/{id}` replaces the editable profile fields.
+- `PUT /v1/accounts/{id}/permissions` replaces permissions for a local JWT account.
+- `DELETE /v1/accounts/{id}` removes the account and its wallets, API keys, identities, preferences, and owned address data. The authenticated account cannot delete itself.
+
+Reading requires `read:account`; creation, updates, permission grants, and deletion require
+`write:account`. OAuth2/OIDC permissions come from the current token and cannot be written through
+the account API. Local JWT permissions are stored on the account and take effect on subsequent
+requests.
+
+Account aggregates include the same lightweight wallet records used by the dashboard account and
+wallet selectors. Full wallet resources remain behind wallet-by-ID endpoints.

@@ -13,7 +13,7 @@ Numeraire SwissKnife combines account ownership with scoped administrative permi
 
 Permissions are a list of strings such as `read:account`, `write:account`, `read:wallet`, and `write:transaction`.
 
-- For OAuth2/OIDC, the external provider (Auth0, Supabase, etc.) adds the effective permissions to the token. Token claims are authoritative and cannot be replaced through the account API.
+- For OAuth2/OIDC, the external identity provider adds the effective permissions to the token. Token claims are authoritative and cannot be replaced through the account API.
 - For local JWT, permissions are stored on the account. The initial account receives all permissions, and an admin can replace another local account's grants through `PUT /v1/accounts/{id}/permissions`.
 - API keys always retain the account-scoped `/v1/me` baseline. Their stored permission subset adds administrative routes and can be revoked independently.
 
@@ -29,7 +29,3 @@ Permissions are a list of strings such as `read:account`, `write:account`, `read
 In this example, the caller can read invoices and payments.
 
 To see the permissions required for each endpoint, check the [API documentation](https://api.numeraire.tech/docs).
-
-## Administrative permissions
-
-Define `read:account` and `write:account` on the Auth0 API and grant them to administrator roles. Keep existing grants, including `read:btc_address` and `write:btc_address` for administrative Bitcoin-address access. Sign in again to verify the effective permissions in a fresh access token.

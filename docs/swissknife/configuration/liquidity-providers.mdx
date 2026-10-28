@@ -1,11 +1,10 @@
 ---
-title: Lightning Providers
+title: Liquidity Providers
 sidebar_position: 2
 image: /img/social.png
 ---
 
-Numeraire SwissKnife supports multiple Lightning Network providers. The choice of provider depends on your needs and preferences regarding
-ease of use, privacy and sovereignty.
+SwissKnife uses liquidity providers to send and receive payments. The current Core Lightning and LND adapters support both Lightning payments and on-chain Bitcoin, including deposit addresses, wallet synchronization, fee estimation, and transaction broadcast.
 
 SwissKnife uses the node as a liquidity provider. Wallet balances are independent of the funds on that node; backing and liquidity are the operator's responsibility, and switching nodes does not rewrite balances.
 
@@ -20,7 +19,7 @@ transaction preparation before broadcast). The on-chain address script type is c
 setting (`p2pkh`, `p2sh`, `p2wpkh` (default) or `p2tr`).
 :::
 
-The provider baseline for 0.3.0 is CLN `v26.06.9` and LND `v0.21.4-beta`. CLN Lightning payments use `xpay` and fee estimates use `getroutes`; the configured credentials must allow these RPCs.
+Select the implementation and transport with `ln_provider`: `cln_grpc`, `cln_rest`, `lnd_grpc`, or `lnd_rest`. CLN Lightning payments use `xpay` and fee estimates use `getroutes`; the configured credentials must allow these RPCs.
 
 ## Core Lightning
 
@@ -74,4 +73,4 @@ Coming soon...
 
 ## Not finding your provider?
 
-If you want to use a different Lightning provider, please open a feature request on our [GitHub repository](https://github.com/bitcoin-numeraire/swissknife/issues).
+If you want to use a different liquidity provider, please open a feature request on our [GitHub repository](https://github.com/bitcoin-numeraire/swissknife/issues).

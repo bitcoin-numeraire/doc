@@ -26,7 +26,7 @@ Config values for the application's business logic. To be placed at the root.
 | `domain`               | Application's domain                                                                       |
 | `host`                 | API host URL                                                                               |
 | `bitcoin_address_type` | On-chain Bitcoin address script type (`p2pkh`, `p2sh`, `p2wpkh`, `p2tr`; default `p2wpkh`) |
-| `ln_provider`          | Lightning Network provider                                                                 |
+| `ln_provider`          | Liquidity provider for Lightning and on-chain Bitcoin                                      |
 | `auth_provider`        | Authentication provider                                                                    |
 | `dashboard_dir`        | Filesystem path to the bundled dashboard static assets                                     |
 
@@ -110,7 +110,7 @@ Config values for [LND provider using REST](https://lightning.engineering/api-do
 | `client_events.retention`        | Minimum replay retention; default `30d`, `0s` disables pruning |
 | `client_events.cleanup_interval` | Pruning interval; default `1h`, `0s` disables the worker       |
 
-The authenticated stream is `/v1/me/events`. Configure reverse proxies for streaming responses without buffering.
+Default settings already enable the authenticated stream at `/v1/me/events`; no additional setup is required. These retention settings are optional. Configure reverse proxies for streaming responses without buffering. See [Events](../usage/events.mdx) for subscription and replay behavior.
 
 ### Logging
 
