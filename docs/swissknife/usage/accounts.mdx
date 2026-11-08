@@ -6,9 +6,9 @@ image: /img/social.png
 
 Administrative account routes live under `/v1/accounts`:
 
-- `POST /v1/accounts` creates an identity-less account with an optional display name and an
-  initial permission set. It cannot sign in. JWT or OAuth2/OIDC authentication provisions separate
-  login-backed accounts; attaching a new identity to an admin-created account is not supported.
+- `POST /v1/accounts` creates an account with an optional display name and an initial permission
+  set. It cannot sign in until a local login is enabled. In a local JWT deployment, use
+  `POST /v1/accounts/{id}/login` to assign its username and issue an activation code.
 - `GET /v1/accounts` and `GET /v1/accounts/{id}` list or fetch account aggregates.
 - `PUT /v1/accounts/{id}` replaces the editable profile fields.
 - `PUT /v1/accounts/{id}/permissions` replaces permissions for a local JWT account.
@@ -21,3 +21,26 @@ requests.
 
 Account aggregates include the same lightweight wallet records used by the dashboard account and
 wallet selectors. Full wallet resources remain behind wallet-by-ID endpoints.
+
+## Local logins
+
+For deployments using `auth_provider = "jwt"`, the dashboard Account directory provides local
+login management for each account. The equivalent endpoints are:
+
+- `GET /v1/accounts/{id}/login` — inspect the username, enabled state, and whether a password is set.
+- `POST /v1/accounts/{id}/login` — assign a username and return a single-use activation code.
+- `PUT /v1/accounts/{id}/login` — enable or disable password sign-in with `{"enabled": true}` or `{"enabled": false}`.
+- `POST /v1/accounts/{id}/login/reset` — issue a password-reset code for another account.
+
+Reading requires `read:account`; changes require `write:account`. Activation and reset codes are
+shown once and expire after 30 minutes. Share the code privately with the account owner, who
+redeems it through `POST /v1/auth/reset-password` with `code`, `new_password`, and an optional
+`display_name`, then signs in with their assigned username.
+
+Signed-in users change their own password in Settings or through `POST /v1/auth/change-password`.
+Password changes, resets, and disabling a login revoke that account's local JWT sessions.
+Disabling password login does not revoke its API keys or delete its wallets.
+
+If administrative access is lost, an operator can run `swissknife recover-local-login <account-id>`
+with the server's database configuration. This enables the account's existing local login and
+issues a one-time reset code for the dashboard's `/reset-password` page.
