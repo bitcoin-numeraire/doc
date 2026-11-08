@@ -8,9 +8,9 @@ SwissKnife publishes three images for `linux/amd64` and `linux/arm64` on [Docker
 
 | Image                                         | Contents                     | Port   |
 | --------------------------------------------- | ---------------------------- | ------ |
-| `bitcoinnumeraire/swissknife:0.3.0`           | Backend and static dashboard | `3000` |
-| `bitcoinnumeraire/swissknife-server:0.3.0`    | Backend only                 | `3000` |
-| `bitcoinnumeraire/swissknife-dashboard:0.3.0` | Standalone Next.js dashboard | `8080` |
+| `bitcoinnumeraire/swissknife:0.3.2`           | Backend and static dashboard | `3000` |
+| `bitcoinnumeraire/swissknife-server:0.3.2`    | Backend only                 | `3000` |
+| `bitcoinnumeraire/swissknife-dashboard:0.3.2` | Standalone Next.js dashboard | `8080` |
 
 Pin a release tag or digest for deployment. Tags such as `0.3`, `0`, and `latest` can move when releases are published.
 
@@ -25,14 +25,14 @@ mkdir -p storage certs
 docker run --env-file ./swissknife.env \
   --mount type=bind,src="$PWD/storage",dst=/storage \
   --mount type=bind,src="$PWD/certs",dst=/certs,readonly \
-  -p 3000:3000 bitcoinnumeraire/swissknife:0.3.0
+  -p 3000:3000 bitcoinnumeraire/swissknife:0.3.2
 ```
 
-Populate the credential directory and configure provider endpoints before running this command. Set a strong `SWISSKNIFE_JWT__SECRET` for the local JWT owner login, or configure OAuth2. For PostgreSQL, set `SWISSKNIFE_DATABASE__URL` and use the database's own persistent storage.
+Populate the credential directory and configure provider endpoints before running this command. Set a strong `SWISSKNIFE_JWT__SECRET` for the local JWT login, or configure OAuth2. For PostgreSQL, set `SWISSKNIFE_DATABASE__URL` and use the database's own persistent storage.
 
 ## Configure the dashboard at build time
 
-The published dashboard uses the checked-in Numeraire Auth0 production profile. For your own API or identity provider, edit `dashboard/.env.production` before [building from source](./source.mdx). Use `NEXT_PUBLIC_AUTH_METHOD=jwt` for the local owner login, or `auth0` with your public Auth0 settings.
+The published dashboard uses the checked-in Numeraire Auth0 production profile. For your own API or identity provider, edit `dashboard/.env.production` before [building from source](./source.mdx). Use `NEXT_PUBLIC_AUTH_METHOD=jwt` for the local account login, or `auth0` with your public Auth0 settings.
 
 Set `NEXT_PUBLIC_SERVER_URL` to the public API origin, or leave it empty for a same-origin bundle. These values are compiled into browser JavaScript; changing environment variables only on a running container does not reconfigure the dashboard. They must not contain private secrets.
 

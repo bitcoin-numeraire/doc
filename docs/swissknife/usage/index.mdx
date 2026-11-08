@@ -14,7 +14,7 @@ The `/v1/me` endpoints are the main access point for an authenticated account. A
 
 ## Signing in
 
-SwissKnife self-hosted is single-tenant by default: on first launch you create one initial **Admin account**. There is no static admin password in the configuration file; it is set once through the sign-up flow and stored hashed in the database.
+On first launch, create the initial **Admin account** with a username and password. You can then create additional accounts and enable their own local logins through the Account directory. Each account owns its wallets and uses the same ownership model as an OAuth2/OIDC deployment.
 
 ### First launch (initial setup)
 
@@ -23,13 +23,13 @@ When the dashboard starts, it checks setup status via [`GET /v1/system/setup`](h
 - `welcome_complete` — whether the welcome flow has been completed.
 - `sign_up_complete` — whether the Admin account has been created.
 
-Complete the welcome step (the dashboard calls [`POST /v1/system/mark-welcome-complete`](https://api.numeraire.tech/docs#tag/system/POST/v1/system/mark-welcome-complete)), then create the Admin account by setting a password. Sign-up only collects a password (entered and confirmed); there are no name, email, or profile fields.
+Complete the welcome step (the dashboard calls [`POST /v1/system/mark-welcome-complete`](https://api.numeraire.tech/docs#tag/system/POST/v1/system/mark-welcome-complete)), then choose the Admin account's username and password, with an optional display name. Passwords must contain at least 15 characters and no more than 1024 UTF-8 bytes.
 
 ```bash
 # Create the initial Admin account (JWT auth provider only)
 curl -X POST https://your-instance:3000/v1/auth/sign-up \
   -H 'Content-Type: application/json' \
-  -d '{ "password": "<your-admin-password>" }'
+  -d '{ "username": "admin", "display_name": "Alice", "password": "<your-admin-password>" }'
 # => { "token": "<jwt>" }
 ```
 
@@ -39,12 +39,12 @@ Sign-up is only available when SwissKnife is configured with the `JWT` auth prov
 
 ### Subsequent logins
 
-Authenticate with the password you set to obtain a JWT:
+Authenticate with your username and password to obtain a JWT:
 
 ```bash
 curl -X POST https://your-instance:3000/v1/auth/sign-in \
   -H 'Content-Type: application/json' \
-  -d '{ "password": "<your-admin-password>" }'
+  -d '{ "username": "admin", "password": "<your-admin-password>" }'
 # => { "token": "<jwt>" }
 ```
 
@@ -58,6 +58,8 @@ curl https://your-instance:3000/v1/me \
 The initial local-JWT account is granted all administrative permissions. For programmatic access
 with independently revocable credentials and no unnecessary admin scopes, use
 [API keys](./api-keys.mdx) instead.
+
+For another local account, an administrator first enables its login and shares the one-time activation code. Open the dashboard's activation/reset page to choose a password, then sign in with the assigned username. See [account administration](./accounts.mdx) for local login management and resets.
 
 ## Checking your balance
 

@@ -60,7 +60,7 @@ Every domain is structured the same way, which makes the codebase predictable. T
   `infra`).
 - **`entities`** — the domain types.
 
-The domains in v0.3.0 are:
+The domains in v0.3.2 are:
 
 | Domain       | Responsibility                                                                                                     |
 | ------------ | ------------------------------------------------------------------------------------------------------------------ |
@@ -143,8 +143,9 @@ Authentication and authorization are two distinct concerns in SwissKnife.
 JWT or an `api-key` header. The selected `auth_provider` decides how a JWT is validated:
 
 - **`jwt`** — local JWT auth. SwissKnife signs and verifies tokens with the configured
-  `jwt.secret`. There is a single initial **Admin** account whose password is set on first launch via
-  the `/v1/auth/sign-up` flow (stored as a bcrypt hash in the database), not in any config file.
+  `jwt.secret`. The initial **Admin** chooses a username and password through `/v1/auth/sign-up`.
+  Administrators can enable local logins for other accounts. Passwords are stored as Argon2id
+  hashes; password changes and resets revoke local JWT sessions.
 - **`oauth2`** — delegated auth via any OpenID Connect provider. SwissKnife fetches the provider's
   OIDC discovery document from the configured issuer (`oauth2.domain`) to learn its JWKS URI and
   canonical issuer, then validates incoming tokens against the published public keys. This makes

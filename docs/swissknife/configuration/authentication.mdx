@@ -8,11 +8,17 @@ Numeraire SwissKnife supports multiple authentication methods:
 
 ## JWT (`auth_provider = "jwt"`)
 
-JWT authentication gives the initial admin account full access via the [`sign-in`](https://api.numeraire.tech/docs#tag/authentication/POST/v1/auth/sign-in) endpoint. It only requires `jwt.secret` to be set in the configuration file (and optionally `jwt.token_expiry`).
+Local JWT authentication lets each account sign in with its own username and password through [`POST /v1/auth/sign-in`](https://api.numeraire.tech/docs#tag/authentication/POST/v1/auth/sign-in). Set `jwt.secret` in the configuration file (and optionally `jwt.token_expiry`).
 
-The admin password is not set in the configuration file. On first launch you set it through the [`sign-up`](https://api.numeraire.tech/docs#tag/authentication/POST/v1/auth/sign-up) endpoint, which stores it hashed in the database. The local auth identity subject is fixed as `admin`.
+On first launch, [`POST /v1/auth/sign-up`](https://api.numeraire.tech/docs#tag/authentication/POST/v1/auth/sign-up) creates the initial administrator. Choose a username, a password, and an optional display name. Usernames contain 3–64 ASCII letters, digits, dots, underscores, or hyphens and are normalized to lowercase. Passwords must contain at least 15 characters and no more than 1024 UTF-8 bytes; they are stored as Argon2id hashes.
 
-Local JWT is the installation owner login. Password changes use `POST /v1/auth/change-password`; per-account local credential management is not part of 0.3.0. Use OAuth2/OIDC for external identity providers.
+Administrators can create accounts and enable separate local logins through the dashboard Account directory or the [account administration API](../usage/accounts.mdx). The account owner redeems the single-use activation code through `POST /v1/auth/reset-password`, chooses a password, then signs in with the assigned username.
+
+Signed-in users change their password with `POST /v1/auth/change-password`. Administrators can issue a reset code for another account, or disable its local login. Activation and reset codes expire after 30 minutes. Password changes, resets, and login disabling revoke that account's local JWT sessions; API keys retain their own lifecycle.
+
+:::note Upgrading from the previous local login
+The local credential format changed in 0.3.1. Installations upgrading from the earlier password-only login must set up new local credentials and sign in again with a username.
+:::
 
 See the configuration values for JWT [here](./index.mdx#authentication).
 

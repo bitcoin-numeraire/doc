@@ -52,9 +52,9 @@ const config: Config = {
   ],
   themeConfig: {
     announcementBar: {
-      id: "announcement_bar_v0_2_0",
+      id: "announcement_bar_v0_3_2",
       content:
-        '📣 <strong><a href="https://github.com/bitcoin-numeraire/swissknife/releases/tag/v0.2.0" target="blank">Numeraire SwissKnife v0.2.0</a></strong> is out!',
+        '📣 <strong><a href="https://github.com/bitcoin-numeraire/swissknife/releases/tag/v0.3.2" target="blank">Numeraire SwissKnife v0.3.2</a></strong> is out!',
       backgroundColor: "#F2B81B",
       textColor: "#121212",
       isCloseable: true,
