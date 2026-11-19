@@ -60,14 +60,14 @@ Every domain is structured the same way, which makes the codebase predictable. T
   `infra`).
 - **`entities`** — the domain types.
 
-The domains in v0.3.2 are:
+The domains in v0.3.3 are:
 
 | Domain       | Responsibility                                                                                                     |
 | ------------ | ------------------------------------------------------------------------------------------------------------------ |
 | `invoice`    | Create and track incoming Lightning invoices.                                                                      |
 | `payment`    | Send Lightning payments and reconcile their status.                                                                |
 | `ln_address` | Manage [Lightning Addresses](https://lightningaddress.com/) (`username@your.domain`).                              |
-| `lnurl`      | Serve the LNURL-pay and `.well-known/lnurlp` flows.                                                                |
+| `lnurl`      | Serve LNURL-pay, `.well-known/lnurlp`, and LUD-21 invoice verification.                                                                |
 | `nostr`      | Serve NIP-05 identities via `.well-known/nostr.json`.                                                              |
 | `bitcoin`    | On-chain wallet: address management, wallet sync, and transaction preparation.                                     |
 | `account`    | Account profiles, auth identities, runtime principals, API keys, permissions, preferences, and dashboard settings. |

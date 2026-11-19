@@ -30,6 +30,10 @@ Config values for the application's business logic. To be placed at the root.
 | `auth_provider`        | Authentication provider                                                                    |
 | `dashboard_dir`        | Filesystem path to the bundled dashboard static assets                                     |
 
+Set `host` to the public API base URL. SwissKnife uses it to construct LNURL-pay
+callback and LUD-21 verification URLs, so it must be reachable by payer wallets
+and payment integrations.
+
 ### Web server
 
 Config values for the web server. To be placed under `web`.

@@ -60,7 +60,33 @@ Each registered Lightning Address is served over LNURL-pay at well-known, unauth
 - [`GET /.well-known/lnurlp/{username}`](https://api.numeraire.tech/docs#tag/lnurl/GET/.well-known/lnurlp/{username}) — returns the LNURL `payRequest` for the address.
 - [`GET /lnurlp/{username}/callback`](https://api.numeraire.tech/docs#tag/lnurl/GET/lnurlp/{username}/callback) — returns an invoice for the requested amount.
 
-You do not call these yourself; they are what a sender's wallet hits when paying `username@your.domain`.
+Sender wallets use these endpoints when paying `username@your.domain`. Payment
+integrations can follow the same flow to generate invoices and verify their settlement.
+
+#### LUD-21 invoice verification
+
+From SwissKnife 0.3.3, the callback response includes a `verify` URL implementing
+[LUD-21](https://github.com/lnurl/luds/blob/luds/21.md). A payment integration can
+use this URL to check whether the invoice has settled without access to the
+recipient's Lightning node.
+
+Send a `GET` request to the returned URL, which points to
+`/lnurlp/{token}/verify`. Use the URL as returned; it needs no JWT or API key.
+Before settlement, the response contains the original BOLT11 invoice in `pr`:
+
+```json
+{
+  "status": "OK",
+  "settled": false,
+  "preimage": null,
+  "pr": "lnbc..."
+}
+```
+
+After settlement, `settled` is `true` and `preimage` contains the hex-encoded
+payment preimage. This also works for payments settled through SwissKnife's
+internal ledger. An invalid or unknown token returns HTTP 200 with
+`{"status":"ERROR","reason":"Not found"}`; clients must inspect `status`.
 
 ### Nostr (NIP-05 and Zaps)
 
@@ -120,6 +146,14 @@ Admins can send on behalf of any wallet using the non-`/me` endpoint [`POST /v1/
 `POST /v1/me/wallets/{wallet_id}/payments/fee-estimate` accepts the same payment input as sending. Lightning quotes distinguish an optional estimated fee from the hard maximum enforced by the provider. On-chain quotes temporarily prepare and release a transaction; the actual send prepares again, so its final fee can differ. Internal transfers quote zero fees.
 
 An HTTP success response can contain a pending payment. If a Lightning send or on-chain broadcast has an unknown outcome, SwissKnife keeps its reservation instead of making the funds spendable again. A later node result can settle or fail the payment; some unresolved cases need manual reconciliation. Do not resend simply because the original HTTP request timed out.
+
+### Trying a failed payment again
+
+After a payment reaches `Failed`, an administrator can delete its record from
+the administrative transaction table or with `DELETE /v1/payments/{id}`
+(`write:transaction` permission), then submit another payment through the normal
+send flow. Use an invoice that is still valid, or request a new one. Pending
+payments cannot be deleted; wait for their outcome before trying again.
 
 ## On-chain Bitcoin wallet
 
