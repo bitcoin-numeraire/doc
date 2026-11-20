@@ -2,7 +2,7 @@
 
 # Stage 1: Base image.
 ## Start with a base image containing NodeJS so we can build Docusaurus.
-FROM node:24.22.1 AS base
+FROM node:24.22.3@sha256:9d266751ca3d7fdbe651c878ffd5ad0a42fed49a18c283509267c97f025b7496 AS base
 ## Disable colour output from yarn to make logs easier to read.
 ENV FORCE_COLOR=0
 ## Enable corepack.
@@ -34,7 +34,7 @@ RUN yarn install --immutable
 RUN yarn build
 
 # Stage 3a: Serve with `docusaurus serve` without shipping the build toolchain.
-FROM node:24.22.1-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS serve
+FROM node:24.22.3-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS serve
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ca-certificates && \
     DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
