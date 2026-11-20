@@ -19,13 +19,16 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7.1.0
         with:
-          node-version: '24.22.1'
+          node-version: '24.22.3'
 
       - name: Enable Corepack
         run: corepack enable
 
       - name: Install dependencies
         run: yarn install --immutable
+
+      - name: Audit dependencies
+        run: yarn audit
 
       - name: Run ESLint
         run: yarn lint
@@ -35,3 +38,5 @@ jobs:
 
       - name: Run build
         run: yarn build
+        env:
+          DOCUSAURUS_SSG_WORKER_THREADS: '2'
