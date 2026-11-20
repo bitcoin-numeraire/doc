@@ -46,7 +46,9 @@ Remove these overrides when the upstream dependency ranges include the fixes.
 
 ## Deployment
 
-Deployment happens automatically thanks to Github Actions.
+Pushing a `v*` tag triggers the Release workflow, which builds the documentation image for AMD64 and ARM64 and publishes it to the DigitalOcean Container Registry.
+
+After the build succeeds, update the docs chart in [k8s-infra](https://github.com/bitcoin-numeraire/k8s-infra/tree/main/charts/docs) to the published tag and digest. Merging that infrastructure change deploys the image.
 
 ## Contributing
 
