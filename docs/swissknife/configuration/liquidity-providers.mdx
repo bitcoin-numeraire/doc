@@ -74,3 +74,11 @@ Coming soon...
 ## Not finding your provider?
 
 If you want to use a different liquidity provider, please open a feature request on our [GitHub repository](https://github.com/bitcoin-numeraire/swissknife/issues).
+
+## Inspect node health
+
+Open **Node health** in the dashboard to see the configured provider, observation time, block height, connected peers, channels and on-chain balance. Operators need the `read:ln_node` permission. Server, self-hosted, merchant and desktop dashboards use the same endpoint, `GET /v1/node/overview`.
+
+The outbound and inbound figures sum active channels. Core Lightning supplies its spendable and receivable amounts. LND estimates each direction from the corresponding channel balance and reserve. A particular payment also depends on HTLC limits, fees and the available route. These figures describe the provider. Individual SwissKnife wallets keep their balances in the wallet ledger.
+
+The API returns millisatoshi amounts as decimal strings and on-chain balances in satoshis. A failed provider read leaves its section empty and adds an alert. Other sections can still return observations. Use **Refresh** to request a new snapshot after resolving the reported condition.
