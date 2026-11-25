@@ -69,3 +69,17 @@ swissknife mcp --server https://wallet.example.com \
 Use a private tunnel to the loopback listener, or terminate HTTPS at a reverse proxy and pass `--public-origin https://mcp.example.com` to the same command. Forward the exact `/mcp` path and the public Host, preserve `Authorization`, and disable buffering for event streams. The client configures a Streamable HTTP endpoint and sends `Authorization: Bearer <transport-token>` on each request. Store the token in the client's secrets configuration.
 
 The transport token grants access to this single wallet connection. Its tools use the wallet credential on the server, so revocation, expiry, payment approvals required by the client, and account spending limits continue to apply. For independent accounts or distinct permissions, configure separate endpoints and secrets. Rotate the transport token by restarting the MCP process. The default invocation continues to serve stdio.
+
+## Access an L402 merchant
+
+Pass the merchant's original HTTP 402 `WWW-Authenticate` header to `decode_l402_challenge`. Review the signed invoice, payee, expiry and exact amount. Use the regular `send_payment` tool with the approved principal, maximum fee and a stable idempotency UUID. Check the submission until it settles.
+
+Call `create_l402_authorization` with the original challenge and the settled wallet payment UUID. It verifies the payment hash and preimage and returns a private bearer credential. Send that header only to the merchant endpoint that issued the challenge. A wallet key with read permission can retrieve a settled payment's proof. The MCP server makes no outbound merchant request.
+
+## Export spending reports
+
+An operator with account-read permission can request `GET /v1/accounts/{account_id}/spending-report` for JSON or `/v1/accounts/{account_id}/spending-report.csv` for CSV. Reports include payments admitted while a budget was active. A pending payment contributes its reserved amount including its maximum fee. A settled payment contributes its actual debit, and a released reservation contributes zero.
+
+The default interval is the last 30 UTC dates. Supply inclusive calendar dates using `from` and `through` for up to 366 days, and set `interval=week` to group them by weeks beginning on Monday. Only dates inside the selected range contribute to a partial week. Filters accept `wallet_id` and `agent_key_id`. The credential ID survives revocation. Older records can recover the original wallet when its payment still exists. Their original credential is unknown. CSV and JSON report exact integer `charged_msat` values.
+
+In the admin dashboard, open the account and scroll to **Spending report**. Choose day or week, select a wallet, or enter the credential UUID to inspect a single agent. **Download CSV** and **Download JSON** export the groups currently displayed, with the original integer millisatoshi amounts.
