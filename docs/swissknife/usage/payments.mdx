@@ -215,7 +215,7 @@ and the reservation before authorizing another attempt.
 
 Operators can use `POST /v1/payments/submissions` with `wallet_id` and
 `write:transaction`. Reading the corresponding status requires `read:transaction`.
-A destination issued by this installation returns `422` with the code
+A local Lightning destination returns `422` with the code
 `internal_transfer_required` before funds are reserved. The wallet's ordinary payment
 endpoint settles such transfers internally.
 
@@ -236,6 +236,49 @@ to the confirmed ID and settles the existing reservation. The check runs in the
 background and retries if the node is unavailable. An operator investigating a
 remaining pending payment should retain the reservation and compare the original
 transaction with the wallet's node history before taking action.
+
+### Background Bitcoin withdrawals
+
+Use the same submission endpoint and wallet-scoped idempotency key for a Bitcoin address
+or BIP21 URI. Specify the recipient amount and maximum miner fee in whole satoshis,
+expressed as millisatoshis in the API. The dashboard lets the payer enter a limit or
+approve the estimated fee as the limit.
+
+```json
+{
+  "idempotency_key": "47c97087-68b1-472a-aab3-4e9ff167f5fb",
+  "input": "<external Bitcoin address on the wallet network>",
+  "amount_msat": 15000000,
+  "maximum_fee_msat": 5000000
+}
+```
+
+This request reserves 20,000 sats and returns a stable payment ID and status URL.
+The recipient receives 15,000 sats. If the confirmed miner fee is 142 sats, the
+wallet spends 15,142 sats and recovers the unused 4,858 sats. A funded transaction
+over the cap fails before broadcast. A payment to a registered address on another
+SwissKnife wallet settles internally with zero miner fee and the same retry guarantee.
+
+| Status | What the payer can do |
+| --- | --- |
+| `accepted` | Read the status URL. A `DELETE` on the same URL cancels an unclaimed withdrawal and releases the hold. A worker that won the claim first causes cancellation to return `409`. |
+| `processing` | SwissKnife is preparing or signing. The payment ID already exists. Its Bitcoin transaction ID becomes available once SwissKnife records the signed transaction. |
+| `waiting` | The node could not fund or sign the transaction on its latest attempt. The status includes the approved cap and pre-signing deadline. |
+| `broadcast` | The node accepted the transaction for broadcast or saw it in its history. The wallet keeps the full reservation until confirmation. |
+| `reconciling` | Publication is uncertain. SwissKnife looks up the recorded transaction ID and can rebroadcast the same signed payload. Keep the original payment ID. |
+| `settled` | The wallet records the actual miner fee and releases the unused cap. |
+| `cancelled`, `expired`, `failed` | The withdrawal ended before broadcast and the reservation was released. Read the payment error for the reason. |
+
+Each approved external payment runs independently. Pre-signing work expires one hour
+after admission. Once signed, a withdrawal keeps its hold through publication and
+confirmation. If the configured node changes, `withdrawal.awaiting_original_provider`
+identifies work bound to the previous node and network. Reconnecting to that node
+resumes execution, including over its other supported transport.
+
+Account SSE events `withdrawal.processing`, `withdrawal.waiting`,
+`withdrawal.broadcast` and `withdrawal.reconciling` prompt clients to read the status
+URL. Terminal transitions use `payment.settled` or `payment.failed`. A status read
+distinguishes a cancelled or expired withdrawal after either a reconnect or a replay.
 
 ### Trying a failed payment again
 
