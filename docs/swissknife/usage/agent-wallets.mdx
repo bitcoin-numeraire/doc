@@ -34,3 +34,24 @@ The host communicates with the command over standard input and output. Use an HT
 The host discovers balance, wallet information, contacts, invoice creation and decoding, recent payments, payment submission and status tools. It can also read `wallet://balance` and `wallet://payments/recent`. Use decimal strings for exact millisatoshi values, including fees.
 
 For a payment, approve the destination, principal and maximum fee. Save the submission UUID with those terms before calling the tool. A retry with the same UUID and terms returns the original submission. Read its status until settlement or a terminal failure. An accepted submission can still be pending. Invoice creation creates another invoice on each call.
+
+## Set an account spending budget
+
+Open an account in **Admin → Accounts** and select **Set spending limits**. Enter a per-payment, daily, weekly or monthly limit in sats, with up to three decimal places. A blank field leaves that period unrestricted. Zero blocks positive payments. Use a separate account for each agent that needs an independent budget. All wallets owned by one account draw from the same limits.
+
+The operator needs account write permission to change limits and account read permission to inspect usage. Give the agent a wallet credential. Keep the operator credential outside its process.
+
+The API accepts decimal **millisatoshi strings** at `PUT /v1/accounts/{account_id}/spending-policy`. This example limits a single payment to 100 sats and the entire day to 1,000 sats.
+
+```json
+{
+  "per_payment_msat": "100000",
+  "daily_msat": "1000000"
+}
+```
+
+Read limits and current usage with `GET` on the same URL. A missing or disabled policy returns HTTP 404. A payment that would exceed a limit returns HTTP 422 before dispatch. Its reservation includes the maximum fee. Settlement replaces the reservation with the actual amount and fee. Failure or cancellation releases the reserved budget. If a provider later confirms a payment, SwissKnife records the actual debit.
+
+The day and month begin at midnight UTC. The week begins on Monday. A payment counts against the periods in which the wallet first accepted it, including when its settlement arrives in a later period. Retrying the same submission leaves usage unchanged. Incoming funds and administrative credits do not consume the budget.
+
+Disabling the budget lets new payments proceed without enforcement. Re-enabling it retains previously charged usage in the current periods. Payments admitted while it was disabled are outside that budget. Roll out the enforcing server version to every instance that can submit a payment before enabling a production policy.
