@@ -39,6 +39,14 @@ For a payment, approve the destination, principal and maximum fee. Save the subm
 
 Open an account in **Admin → Accounts** and select **Set spending limits**. Enter a per-payment, daily, weekly or monthly limit in sats, with up to three decimal places. A blank field leaves that period unrestricted. Zero blocks positive payments. Use a separate account for each agent that needs an independent budget. All wallets owned by one account draw from the same limits.
 
+The dashboard offers three example templates in sats. Choosing one fills the form. Review the amounts, edit individual limits as needed, and select **Save limits** to apply them. Closing the editor discards your changes.
+
+| Template | Per payment | Per agent in a rolling hour | Daily | Weekly | Monthly |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Conservative | 10 | 30 | 100 | 500 | 2,000 |
+| Moderate | 50 | 150 | 500 | 2,500 | 10,000 |
+| Generous | 100 | 300 | 1,000 | 5,000 | 20,000 |
+
 The operator needs account write permission to change limits and account read permission to inspect usage. Give the agent a wallet credential. Keep the operator credential outside its process.
 
 The API accepts decimal **millisatoshi strings** at `PUT /v1/accounts/{account_id}/spending-policy`. This example limits a single payment to 100 sats and the entire day to 1,000 sats.
