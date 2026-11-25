@@ -170,6 +170,55 @@ The account-scoped send and list routes enforce ownership of the wallet in the p
 Admins can send on behalf of any wallet using the non-`/me` endpoint [`POST /v1/payments`](https://api.numeraire.tech/docs#tag/payments/POST/v1/payments) with a `wallet_id`. There is no default wallet fallback; the wallet selector is required.
 :::
 
+### Background Lightning payments
+
+An integration can submit an external BOLT11 invoice, LNURL-pay request or Lightning
+Address and release its HTTP connection while the node routes the payment. Generate a
+UUID for each payment the user approves and save it with the original request before
+sending. Reuse that UUID and the same input, amount, comment and fee ceiling on a retry.
+
+```http
+POST /v1/me/wallets/{wallet_id}/payments/submissions
+Authorization: Bearer <jwt>
+Content-Type: application/json
+
+{
+  "idempotency_key": "ab11ad05-5c90-4c75-b908-5a5c352971dd",
+  "input": "<external BOLT11 invoice>",
+  "maximum_fee_msat": 5000
+}
+```
+
+SwissKnife resolves the invoice, validates its amount and expiry, and commits the wallet
+reservation before returning `202 Accepted`. Amountless invoices and LNURL payments
+require `amount_msat`. The routing fee ceiling is the lower of `maximum_fee_msat` and
+the configured provider limit. The response includes the payment, its execution state,
+and a `status_url`. The same URL appears in the `Location` header.
+
+| State | Wallet and provider behavior |
+| --- | --- |
+| `accepted` | The database holds the payment and its reservation. A worker can claim it. |
+| `processing` | A worker claimed the command. The node may still be routing, or SwissKnife may be waiting for a definitive result. |
+| `settled` | The payment completed. The final wallet debit includes the actual fee. A validated LNURL success action is available on the payment. |
+| `failed` | The node reported a definitive failure. SwissKnife released the reservation. |
+
+Read `status_url` with the same wallet authorization after a reconnect. Account events
+`payment.accepted`, `payment.processing`, `payment.settled` and `payment.failed`
+prompt clients to refresh that resource. A lost submission response can be recovered
+by repeating the original POST. Changing its payload under the same key returns
+`409 Conflict`. Deleting a terminal payment leaves its key unavailable for reuse.
+
+A restart picks up unclaimed commands. After dispatch, SwissKnife reconciles by payment
+hash. A crash between the durable claim and the node call can leave a payment in
+`processing` without a matching node record. Ask the operator to reconcile the hash
+and the reservation before authorizing another attempt.
+
+Operators can use `POST /v1/payments/submissions` with `wallet_id` and
+`write:transaction`. Reading the corresponding status requires `read:transaction`.
+A destination issued by this installation returns `422` with the code
+`internal_transfer_required` before funds are reserved. The wallet's ordinary payment
+endpoint settles such transfers internally.
+
 ## Fee estimates and pending payments
 
 `POST /v1/me/wallets/{wallet_id}/payments/fee-estimate` accepts the same payment input as sending. Lightning quotes distinguish an optional estimated fee from the hard maximum enforced by the provider. On-chain quotes temporarily prepare and release a transaction; the actual send prepares again, so its final fee can differ. Internal transfers quote zero fees.
