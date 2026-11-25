@@ -53,6 +53,16 @@ Both launch methods read the scoped wallet key from the host environment. Revoki
 
 The host discovers balance, wallet information, contacts, invoice creation and decoding, recent payments, payment submission and status tools. It can also read `wallet://balance` and `wallet://payments/recent`. Use decimal strings for exact millisatoshi values, including fees.
 
+### Subscribe to wallet changes
+
+Subscribe to either resource with a wallet key that has read permission. An update identifies the resource URI. Call `resources/read` to fetch the current balance or the twenty most recent outgoing payments. Changes between checks can arrive as a single update.
+
+Clients using protocol version `2026-07-28` can open a `subscriptions/listen` request over stdio or Streamable HTTP. Request the resource URIs in `notifications.resourceSubscriptions`. Each accepted resource sends an initial update when its feed attaches. Cancel the request or close the HTTP response stream to stop listening.
+
+Clients using protocol version `2025-11-25` over stdio can use `resources/subscribe` and `resources/unsubscribe` with a `uri` parameter. Read the resource after subscribing to obtain its starting value. Older HTTP clients can read both resources directly.
+
+While clients are subscribed, SwissKnife MCP checks each selected resource about every three seconds using its scoped wallet key. Closing the last subscription stops those checks. If the wallet API becomes unavailable or the credential expires or is revoked, restore access and subscribe again.
+
 For a payment, approve the destination, principal and maximum fee. Save the submission UUID with those terms before calling the tool. A retry with the same UUID and terms returns the original submission. Read its status until settlement or a terminal failure. An accepted submission can still be pending. Invoice creation creates another invoice on each call.
 
 ## Set an account spending budget
