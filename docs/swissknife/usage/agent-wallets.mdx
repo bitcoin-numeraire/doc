@@ -72,6 +72,8 @@ Set **Require approval above** in the account spending limits, or include `appro
 
 If review is required, the submission returns HTTP 409 with `code: "payment_approval_required"` and a `Location` header pointing to the operator’s review resource. At this stage, the payment has reserved zero funds. The original agent should retain the request body and its idempotency key.
 
+In **Admin → Accounts**, open the paying account and select **Review payment** under **Payment approvals**. Compare the original request, resolved destination, wallet credential, principal, maximum fee, and total exposure. Choose **Approve retry** or **Reject**. The queue refreshes while the account is open.
+
 1. Read `GET /v1/accounts/{account_id}/payment-approvals` with account read permission. Inspect the original input, resolved payment hash or Bitcoin address, wallet, credential, amount, and maximum fee.
 2. Use account write permission to send `PUT /v1/accounts/{account_id}/payment-approvals/{id}` with `{"decision":"approve"}` or `{"decision":"reject"}`. An approval authorizes one retry from the same credential. The operator's decision, identity and timestamp are available at the same URL.
 3. Retry the original payment submission. The wallet uses the reviewed invoice or Bitcoin destination, checks the credential, invoice expiry, balance and current spending rules, and admits the payment once. A revoked credential or rejected request cannot spend. A tighter budget may block the retry while the approval is still valid.
