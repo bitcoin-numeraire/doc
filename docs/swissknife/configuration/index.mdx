@@ -76,7 +76,9 @@ Config values for [Core Lightning provider using gRPC](https://docs.corelightnin
 ### Core Lightning provider (REST)
 
 Config values for [Core Lightning provider using REST](https://docs.corelightning.org/docs/rest). To be placed under `cln_rest_config`.
-Numeraire SwissKnife uses runes and the websocket server to sync events from the node.
+SwissKnife authenticates ordinary requests and event waits with the same rune and TLS configuration. If you restrict RPC methods, allow `wait`, `listsendpays`, `listinvoices` and `listchainmoves` in addition to the methods your wallet uses. SwissKnife replays missed invoice settlements, looks up the aggregate status of outgoing payments and resumes on-chain synchronization from its stored cursor.
+
+The request timeout applies to ordinary RPCs. Long-lived indexed waits stay open until the node reports a change. Configure any reverse proxy in front of CLN to allow idle HTTPS requests or expect periodic reconnects.
 
 | Config Value                               | Description                                                                       |
 | ------------------------------------------ | --------------------------------------------------------------------------------- |
@@ -90,6 +92,8 @@ Numeraire SwissKnife uses runes and the websocket server to sync events from the
 | `cln_rest_config.accept_invalid_hostnames` | Accept invalid hostnames                                                          |
 | `cln_rest_config.maxfee`                   | Optional absolute routing fee cap in msat; unset uses `max(1%, 5000 msat)`        |
 | `cln_rest_config.payment_timeout`          | Payment timeout duration                                                          |
+| `cln_rest_config.ws_min_reconnect_delay`   | Initial delay when reconnecting the indexed event listener (default 1 second)      |
+| `cln_rest_config.ws_max_reconnect_delay`   | Maximum delay between retries (default 30 seconds)                                 |
 
 :::tip
 Use an ENV var for `SWISSKNIFE_CLN_REST_CONFIG__RUNE`, as that value is highly sensitive.
@@ -111,6 +115,8 @@ Config values for [LND provider using gRPC](https://lightning.engineering/api-do
 ### LND provider (REST)
 
 Config values for [LND provider using REST](https://lightning.engineering/api-docs/api/lnd/). To be placed under `lnd_rest_config`.
+
+Invoice and transaction subscriptions use LND’s streaming REST endpoints with the same macaroon, trusted certificate and hostname settings as other LND requests. Long-lived subscriptions have no overall request timeout.
 
 | Config Value                               | Description                                                                                           |
 | ------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
