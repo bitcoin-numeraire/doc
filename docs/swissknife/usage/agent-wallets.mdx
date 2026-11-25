@@ -83,3 +83,15 @@ An operator with account-read permission can request `GET /v1/accounts/{account_
 The default interval is the last 30 UTC dates. Supply inclusive calendar dates using `from` and `through` for up to 366 days, and set `interval=week` to group them by weeks beginning on Monday. Only dates inside the selected range contribute to a partial week. Filters accept `wallet_id` and `agent_key_id`. The credential ID survives revocation. Older records can recover the original wallet when its payment still exists. Their original credential is unknown. CSV and JSON report exact integer `charged_msat` values.
 
 In the admin dashboard, open the account and scroll to **Spending report**. Choose day or week, select a wallet, or enter the credential UUID to inspect a single agent. **Download CSV** and **Download JSON** export the groups currently displayed, with the original integer millisatoshi amounts.
+
+## Restrict delegated spending hours
+
+An operator can use `PUT /v1/accounts/{account_id}/agent-spending-hours` to restrict when wallet credentials may start a new payment. This rule works independently of amount budgets. The following example allows Monday through Friday, 09:00 through 16:59 UTC.
+
+```json
+{"weekdays":[1,2,3,4,5],"start_minute":540,"end_minute":1020}
+```
+
+Weekdays run from Monday (1) through Sunday (7). Minutes use UTC. An earlier end crosses midnight, with the selected weekday indicating the start of the shift. For example, a Friday shift from 22:00 to 02:00 includes early Saturday morning. A start of 0 and end of 1440 allow the entire selected day.
+
+Outside these hours a delegated payment returns HTTP 422 before funds are reserved. Previously admitted payments can settle and the original request can be replayed to inspect its result. Account-owner and operator payment authority continues to use the regular account budget. Read the rule with `GET`; remove it with `DELETE` on the same URL. Reads require account-read permission and changes require account-write permission.
