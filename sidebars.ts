@@ -61,6 +61,7 @@ const sidebars: SidebarsConfig = {
         "swissknife/deployment/docker",
         "swissknife/deployment/kubernetes",
         "swissknife/deployment/source",
+        "swissknife/deployment/desktop",
       ],
     },
     {
