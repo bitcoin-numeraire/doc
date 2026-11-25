@@ -103,3 +103,17 @@ If a response is lost, resend the same request, including its UUID. A matching r
 returns the original receipt with the adjustment invoice ID, actor account, API key ID
 when applicable, and timestamp. A conflicting request or second opening credit returns
 HTTP 409.
+
+## Wallet identity keys
+
+Open **Identity → Identity keys** for the selected wallet. The owner enrolls an identity when they first use Nostr or LNURL-auth with that wallet. A wallet provisioned by an administrator can be enrolled later on its owner's device.
+
+Choose **Create identity**, store the 24-word English recovery phrase privately, set a device unlock password and confirm that you have saved the phrase. SwissKnife keeps the encrypted key material in this browser profile. The wallet API records two public keys, the recovery public key and the active Nostr public key. Back up Bitcoin and Lightning funds using the node and wallet backup procedures.
+
+Use **Restore from phrase** on another device or after clearing browser storage. Enter the original BIP39 words, any original BIP39 passphrase and a new device unlock password. Written recovery material lets you choose a new device password. Keep an independently imported Nostr private key with your recovery material. A new device checks the derived public keys against the enrolled wallet.
+
+**View recovery details** reveals the phrase and current Nostr private key after you unlock the device. **Change Nostr key** accepts an existing nsec or a 32-byte hex private key. Leave that field empty to return to the NIP-06 key derived from the phrase. The LNURL-auth identity stays tied to the phrase. Publish your chosen Nostr public key separately in the Lightning Address settings if you want NIP-05 verification.
+
+For **Sign in with LNURL**, paste the service's encoded LNURL or HTTPS challenge. Review the full service host and requested action. Unlock the wallet, choose **Approve and sign**, then **Send to service** to see the service's response. The device derives a separate signing key for each service domain under LUD-05.
+
+If the browser loses a registration response, **Confirm registration** recovers the encrypted change saved on this device. The account endpoint `/v1/me/wallets/{wallet_id}/identity` accepts only public keys and checks the expected previous values before applying an update.
