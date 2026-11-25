@@ -65,3 +65,15 @@ The day and month begin at midnight UTC. The week begins on Monday. A payment co
 Set **Per agent in a rolling hour** to limit each delegated wallet credential independently. For example, a 10-sat limit lets a credential spend 6 sats and then 4 sats. Further positive payments must wait until an earlier charge falls outside the preceding 60 minutes or a reservation releases funds. A second credential has its own hourly allowance. Direct owner payments still use the account-wide limits. To configure the same control through the spending-policy API, send `agent_hourly_msat` as a decimal string alongside the account limits you want to retain.
 
 Disabling the budget lets new payments proceed without enforcement. Re-enabling it retains previously charged usage in the current periods. Payments admitted while it was disabled are outside that budget. Roll out the enforcing server version to every instance that can submit a payment before enabling a production policy.
+
+## Review larger delegated payments
+
+Set **Require approval above** in the account spending limits, or include `approval_above_msat` in the spending-policy PUT. The API accepts a decimal string in millisatoshis. The threshold compares the principal plus the maximum fee. A charge exactly equal to the threshold proceeds under the usual limits. Zero requires review for every positive delegated payment. Include the threshold when replacing the policy to retain it.
+
+If review is required, the submission returns HTTP 409 with `code: "payment_approval_required"` and a `Location` header pointing to the operator’s review resource. At this stage, the payment has reserved zero funds. The original agent should retain the request body and its idempotency key.
+
+1. Read `GET /v1/accounts/{account_id}/payment-approvals` with account read permission. Inspect the original input, resolved payment hash or Bitcoin address, wallet, credential, amount, and maximum fee.
+2. Use account write permission to send `PUT /v1/accounts/{account_id}/payment-approvals/{id}` with `{"decision":"approve"}` or `{"decision":"reject"}`. An approval authorizes one retry from the same credential. The operator's decision, identity and timestamp are available at the same URL.
+3. Retry the original payment submission. The wallet uses the reviewed invoice or Bitcoin destination, checks the credential, invoice expiry, balance and current spending rules, and admits the payment once. A revoked credential or rejected request cannot spend. A tighter budget may block the retry while the approval is still valid.
+
+A review lasts up to 24 hours and ends sooner if the credential or a BOLT11 invoice expires. BOLT12 invoice expiry is checked again on admission. Each account can have up to 100 outstanding reviews, including approved requests awaiting retry. New request IDs start independent submissions. A wallet owner can still submit directly under the account limits.
