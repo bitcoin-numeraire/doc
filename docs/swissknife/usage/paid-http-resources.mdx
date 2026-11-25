@@ -29,3 +29,11 @@ Use HTTPS on the public endpoint. Restrict direct access to the upstream if the 
 3. Repeat the GET with `Authorization: L402 <macaroon>:<hex-preimage>`. This bearer credential grants access until the expiry set when the challenge was issued. A failed upstream request returns HTTP 502. Retry with the same credential while it is valid.
 
 The example costs 42 sats once and admits repeat downloads for ten minutes from challenge issuance. If you change the receiving wallet, upstream URL, route name, price or access duration, buyers need new passes. The server limits new invoices to 30 per minute per route per replica by default. Existing paid passes continue working when issuance is limited. The merchant can track the invoice and its settlement through normal wallet history.
+
+## Inspect a pass without using it
+
+SwissKnife merchants support `HEAD <resource-url>/status` on both operator-configured and wallet-published routes. The wallet MCP bridge handles the request with its `check_l402_token` tool. For another client, verify that the payment preimage hashes to the payment hash in the macaroon identifier. Append the first-party caveat `purpose=status` to a copy of the macaroon, serialize it in v2 format and send it in the `SwissKnife-L402-Inspection` header. Keep the original credential and the preimage on the buyer's device.
+
+Read `SwissKnife-L402-Status` from the response. On HTTP 200, `active` means the signed terms apply, `exhausted` means the pack has zero uses, and `inactive` means the pass expired or the terms changed. Active packs and exhausted packs also return an integer `SwissKnife-L402-Remaining`. Time passes omit the count. HTTP 401 with `invalid` indicates a rejected inspection proof. Treat a missing endpoint, a redirect, a network error or an unrecognized response as unknown.
+
+Inspection reads the current count. It neither reserves a request nor contacts the protected resource. Clients should still handle expiry or exhaustion when they make the paid GET.
