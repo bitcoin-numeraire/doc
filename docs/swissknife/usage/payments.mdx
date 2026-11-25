@@ -225,6 +225,18 @@ endpoint settles such transfers internally.
 
 An HTTP success response can contain a pending payment. If a Lightning send or on-chain broadcast has an unknown outcome, SwissKnife keeps its reservation instead of making the funds spendable again. A later node result can settle or fail the payment; some unresolved cases need manual reconciliation. Do not resend simply because the original HTTP request timed out.
 
+For an LND withdrawal, the payment's `bitcoin.txid` is the ID of the signed
+transaction. Use it to look up the transaction with your Bitcoin node. A withdrawal
+spending a nested SegWit input can have a different ID before signing.
+
+On upgrade, an LND installation with pending on-chain payments checks its recorded
+withdrawals once against the node's transaction history. When a confirmed transaction
+matches the original unsigned transaction exactly, SwissKnife updates the payment
+to the confirmed ID and settles the existing reservation. The check runs in the
+background and retries if the node is unavailable. An operator investigating a
+remaining pending payment should retain the reservation and compare the original
+transaction with the wallet's node history before taking action.
+
 ### Trying a failed payment again
 
 After a payment reaches `Failed`, an administrator can delete its record from
