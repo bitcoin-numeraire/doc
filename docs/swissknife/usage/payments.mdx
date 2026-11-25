@@ -296,6 +296,14 @@ API clients can submit the same targets to `POST /v1/me/wallets/{wallet_id}/paym
 
 SwissKnife accepts single Bitcoin-denominated payments on the wallet's configured network. An explicitly supplied amount must match a fixed request. Expired requests, unsupported offer types and LND providers return HTTP 422.
 
+## Receive with a reusable offer
+
+In **Receive → BOLT12**, enter a description and optionally a fixed amount in sats. Leave the amount empty for donations or tips. Enable **Allow one payment only** for a single-use offer. Choose **Create offer**, then copy the offer or display its QR code. The description is public. Each incoming payment creates a separate invoice in the owning wallet, with its own payment hash, amount and optional payer note.
+
+API clients can create and list offers at `/v1/me/wallets/{wallet_id}/offers`. A creation request includes a UUID `idempotency_key`, a `description`, optional `amount_msat` and optional `single_use`. Retry with the same key and terms after an interrupted response. Administrators can use `/v1/offers` with a wallet ID. The system setup response advertises support in `bolt12_offers`.
+
+Disable an offer from the drawer or use `DELETE /v1/me/wallets/{wallet_id}/offers/{id}`. Disabling stops new invoice requests. SwissKnife can still credit a payment the issuing node accepted against an earlier invoice. A single-use offer becomes disabled when the first payment settles. After a SwissKnife outage the original node's indexed invoice history restores missed receipts. Keep that node and its invoice history available. Both Core Lightning transports can manage offers belonging to the same node and network.
+
 ## On-chain Bitcoin wallet
 
 The on-chain wallet (available for self-hosted CLN and LND) supports address management, wallet synchronization, and transaction preparation before broadcast.
