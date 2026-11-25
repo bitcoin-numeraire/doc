@@ -69,3 +69,37 @@ display name or identity subject. Each list item carries these fields in `wallet
 A transaction-only reader can identify a wallet by its compact code in the dashboard.
 The personal activity view shows transactions for the selected wallet and omits the
 administrative ownership columns.
+
+## Give a wallet an opening balance or top-up
+
+An operator with `credit:wallet` can open a wallet in the administrative wallet directory
+and choose **Add credit**. During setup, the personal wallet page also offers an optional
+**Opening credit** for a wallet the operator owns. Select the wallet, check its account,
+asset and network, enter the amount and reason, and confirm the resulting balance.
+Each wallet accepts one opening credit and any number of subsequent top-ups.
+
+The credit increases the spendable SwissKnife balance. It does not move funds on a
+Lightning node or Bitcoin wallet. Operators manage the liquidity required for external
+payments separately. The wallet statement records the reason and purpose under the
+`Adjustment` ledger. Network payment volume excludes these entries.
+
+API clients send `POST /v1/wallets/{wallet_id}/credits` with a newly generated request ID.
+For example, a Bitcoin wallet with eleven asset decimals represents 1,000 sats as follows.
+
+```json
+{
+  "request_id": "f1e6a3f1-f563-4cf2-863e-45de3dc3ee6d",
+  "account_id": "64bc98a5-7d29-47cc-ae21-2ba009c290db",
+  "asset_id": "00000000-0000-4000-8000-000000000004",
+  "amount_units": "1000000",
+  "purpose": "opening",
+  "reason": "Opening balance agreed during wallet setup"
+}
+```
+
+Use the account and asset IDs of the target wallet and encode the positive amount as
+a decimal string in the asset's smallest units. Subsequent credits use `top_up`.
+If a response is lost, resend the same request, including its UUID. A matching retry
+returns the original receipt with the adjustment invoice ID, actor account, API key ID
+when applicable, and timestamp. A conflicting request or second opening credit returns
+HTTP 409.

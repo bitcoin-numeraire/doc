@@ -29,3 +29,12 @@ Permissions are a list of strings such as `read:account`, `write:account`, `read
 In this example, the caller can read invoices and payments.
 
 To see the permissions required for each endpoint, check the [API documentation](https://api.numeraire.tech/docs).
+
+### Wallet credits
+
+Grant `credit:wallet` only to operators who may increase a wallet balance. A wallet owner
+or editor needs this explicit permission to post a credit, including during setup.
+For OAuth2/OIDC deployments, define the permission in the identity provider, grant it
+to the operator and obtain a new access token. For existing local JWT accounts, an
+administrator can add the permission through the account permission editor. When granting
+access to an API key, include the scope in the key's own permission subset.
