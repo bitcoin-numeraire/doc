@@ -58,3 +58,14 @@ Disabling password login does not revoke its API keys or delete its wallets.
 If administrative access is lost, an operator can run `swissknife recover-local-login <account-id>`
 with the server's database configuration. This enables the account's existing local login and
 issues a one-time reset code for the dashboard's `/reset-password` page.
+
+### Ownership in administrative transaction history
+
+Administrative invoice and payment lists require `read:transaction`. Operators who also
+have `read:wallet` see the wallet label, Lightning username when registered, asset ticker
+and network. Operators with `read:account` can also identify the owning account by its
+display name or identity subject. Each list item carries these fields in `wallet_display`.
+
+A transaction-only reader can identify a wallet by its compact code in the dashboard.
+The personal activity view shows transactions for the selected wallet and omits the
+administrative ownership columns.
