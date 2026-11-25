@@ -1,0 +1,31 @@
+---
+title: Sell access to an HTTP resource
+image: /img/social.png
+---
+
+SwissKnife can charge a fixed Lightning price for access to a report, file or API response. The merchant receives the funds in a native Bitcoin wallet on the server's network. A buyer needs a Lightning payer that can return the invoice preimage.
+
+## Configure a resource
+
+Provide a 32-byte random root key as 64 hexadecimal characters in the server secret `SWISSKNIFE_L402__ROOT_KEY`. Generate it with `openssl rand -hex 32` and store it in the deployment's secret manager. All replicas serving the route need the same key. Rotating it invalidates outstanding passes.
+
+Add the route to the deployment's SwissKnife configuration. Use the UUID of the receiving wallet and a fixed upstream resource accessible from the SwissKnife server.
+
+```toml
+[l402.routes.report]
+wallet_id = "89b4741a-62d3-4849-a848-79396f2ad427"
+target = "https://reports.example.com/daily.json"
+price_sats = 42
+access_seconds = 600
+challenges_per_minute = 30
+```
+
+Use HTTPS on the public endpoint. Restrict direct access to the upstream if the resource should only be available to paying clients. Each public route accepts GET. SwissKnife leaves the operator-configured upstream URL intact and sends a fresh request without buyer cookies, query parameters or credentials. Successful responses are served as downloads, with a 2 MiB limit and a 10-second upstream timeout.
+
+## Buy and reuse access
+
+1. Request `GET /l402/report`. HTTP 402 returns a `WWW-Authenticate` header containing an L402 macaroon and a BOLT11 invoice.
+2. Check the invoice price and network. Pay it and keep its 32-byte preimage private. The invoice expires after half the access period or 120 seconds, whichever comes first.
+3. Repeat the GET with `Authorization: L402 <macaroon>:<hex-preimage>`. This bearer credential grants access until the expiry set when the challenge was issued. A failed upstream request returns HTTP 502. Retry with the same credential while it is valid.
+
+The example costs 42 sats once and admits repeat downloads for ten minutes from challenge issuance. If you change the receiving wallet, upstream URL, route name, price or access duration, buyers need new passes. The server limits new invoices to 30 per minute per route per replica by default. Existing paid passes continue working when issuance is limited. The merchant can track the invoice and its settlement through normal wallet history.
