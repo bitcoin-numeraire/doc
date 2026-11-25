@@ -55,7 +55,7 @@ After exhaustion the client receives a new payment challenge, subject to the rou
 
 ## Review merchant revenue
 
-In the dashboard, open **Wallet → Invoices → Merchant revenue**. Choose the first and last UTC date to see settled invoices, gross receipts and incoming fees for each route. The wallet’s balance-privacy setting masks the displayed amounts.
+In the dashboard, open **Wallet → Invoices → Merchant tools → Merchant revenue**. Choose the first and last UTC date to see settled invoices, gross receipts and incoming fees for each route. The wallet’s balance-privacy setting masks the displayed amounts.
 
 Use the wallet owner's account credential or a wallet credential with read access to request `GET /v1/me/wallets/{wallet_id}/l402/revenue`. The report groups retained, settled invoices by the merchant route that issued them. Each row contains the route, the settled invoice count, the amount received and the recorded incoming fees. Amounts are decimal strings in millisatoshis. Revenue is recorded at settlement even if the buyer has yet to use the pass. Redeeming the same pass again does not add revenue.
 
@@ -73,6 +73,8 @@ price_sats = 50
 access_seconds = 600
 requests_per_payment = 3
 ```
+
+In the dashboard, open **Wallet → Invoices → Merchant tools → Paid routes**. Choose **New route**, enter a public name, select the resource, and enter a price in millisatoshis. For a resource with dynamic quotes, the amount is the maximum per invoice. Publish the route and copy its public URL. Select an existing route to change the price or switch off **Accept new sales**.
 
 The wallet owner reads their assigned resources and published routes with `GET /v1/me/wallets/{wallet_id}/l402/routes`. The response contains origin names and terms. Upstream and pricing URLs stay on the server. Choose a route name of 1–57 lowercase letters, digits or hyphens. Send its terms to `PUT /v1/me/wallets/{wallet_id}/l402/routes/{name}`.
 
