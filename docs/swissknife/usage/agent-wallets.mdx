@@ -31,6 +31,26 @@ swissknife mcp --server https://wallet.example.com --wallet 11111111-2222-4333-8
 
 The host communicates with the command over standard input and output. Use an HTTPS origin for a remote instance or HTTP on loopback for local development. Start a separate command for each wallet.
 
+### Run with Docker Compose
+
+The SwissKnife checkout includes a wallet and MCP example under `examples/mcp`. Set `SWISSKNIFE_IMAGE` to a build that includes the MCP command. Configure the wallet's provider, certificates and signing secret as described in the example README, then run `docker compose up -d wallet` from that directory. Set `SWISSKNIFE_WALLET_ID` and `SWISSKNIFE_MCP_WALLET_KEY` in the MCP host's private environment.
+
+Configure the host to execute the following command, replacing the path with your checkout. The MCP process shares the wallet's loopback connection. Only the wallet container receives the provider credentials and database volume.
+
+```shell
+docker compose -f /path/to/examples/mcp/compose.yaml run --rm --no-deps -T mcp
+```
+
+### Run with a local npm package
+
+If your MCP host launches tools with `npx`, run `npm pack ./packages/swissknife-mcp` from the SwissKnife repository. Put the matching SwissKnife binary on your host's PATH or set `SWISSKNIFE_BIN` to its absolute path. Configure the host to launch the resulting package, substituting the tarball's full path and your wallet UUID.
+
+```shell
+npx --offline --yes --package /path/to/package.tgz swissknife-mcp --server https://wallet.example.com --wallet 11111111-2222-4333-8444-555555555555
+```
+
+Both launch methods read the scoped wallet key from the host environment. Revoking the key ends its access.
+
 The host discovers balance, wallet information, contacts, invoice creation and decoding, recent payments, payment submission and status tools. It can also read `wallet://balance` and `wallet://payments/recent`. Use decimal strings for exact millisatoshi values, including fees.
 
 For a payment, approve the destination, principal and maximum fee. Save the submission UUID with those terms before calling the tool. A retry with the same UUID and terms returns the original submission. Read its status until settlement or a terminal failure. An accepted submission can still be pending. Invoice creation creates another invoice on each call.
