@@ -45,6 +45,12 @@ swissknife mcp --server https://wallet.example.com --wallet 11111111-2222-4333-8
 
 The host communicates with the command over standard input and output. Use an HTTPS origin for a remote instance or HTTP on loopback for local development. Start a separate command for each wallet.
 
+### Confirm an incoming invoice
+
+Keep the SwissKnife UUID returned by `create_invoice`. Pass it as `id` to `get_invoice` on the same wallet connection. The credential needs `receive` to issue an invoice and `read` to check its receipt. You can give a reconciliation client read access separately.
+
+The result includes the invoice status, ledger, requested and received amounts in decimal millisatoshi strings, and the settlement timestamp when available. Use `Settled` and the received amount to confirm a receipt. Checking the same UUID again retrieves the current state.
+
 ### Run with Docker Compose
 
 The SwissKnife checkout includes a wallet and MCP example under `examples/mcp`. Set `SWISSKNIFE_IMAGE` to a build that includes the MCP command. Configure the wallet's provider, certificates and signing secret as described in the example README, then run `docker compose up -d wallet` from that directory. Set `SWISSKNIFE_WALLET_ID` and `SWISSKNIFE_MCP_WALLET_KEY` in the MCP host's private environment.
