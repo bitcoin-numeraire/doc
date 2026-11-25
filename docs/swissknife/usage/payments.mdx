@@ -204,3 +204,38 @@ SwissKnife synchronizes on-chain wallet state with your node so deposits are det
 :::note
 The on-chain wallet requires a self-hosted Core Lightning or LND provider and the `bitcoin_address_type` setting. See the [Liquidity providers](../configuration/liquidity-providers.mdx) and [Configuration](../configuration/index.mdx) pages for setup.
 :::
+
+## Export a wallet statement
+
+Open **Activity** for the selected wallet, choose **Export statement**, enter the first and last
+UTC dates to include, and download the CSV. Administrators with transaction-read permission
+can export from an individual wallet's detail page. The download covers all activity created
+during those dates, including transactions on later pages of the activity table.
+
+The account API accepts an inclusive `from` and exclusive `until` timestamp. For example,
+to include all of March, pass midnight on March 1 and midnight on April 1.
+
+```bash
+curl --fail --get "https://your-instance/v1/me/wallets/$WALLET_ID/statement" \
+  -H "Authorization: Bearer $TOKEN" \
+  --data-urlencode "from=2025-03-01T00:00:00Z" \
+  --data-urlencode "until=2025-04-01T00:00:00Z" \
+  --output wallet-march.csv
+```
+
+The administrative endpoint is `GET /v1/wallets/{id}/statement` and requires `read:transaction`.
+An empty interval with valid dates returns a file containing the headers.
+
+| Columns | Meaning |
+| --- | --- |
+| `transaction_id`, `wallet_id`, `asset_id`, `network` | Stable identifiers and network for matching exports to API records. |
+| `created_at_utc`, `payment_time_utc` | Creation time and recorded payment time. The payment time is empty until recorded. |
+| `direction`, `ledger`, `status` | Invoices are `in` and payments are `out`. The ledger identifies Lightning, on-chain or internal activity. Status is current at export time. |
+| `gross_amount_msat`, `fee_msat` | Integer millisatoshis. Incoming rows use the actual received amount when available and the requested amount otherwise. A blank amount or fee is unknown. Import these columns as text in spreadsheets that round long integers. |
+| `description` | User-provided description. Descriptions that could be interpreted as formulas receive a leading apostrophe. |
+
+Use settlement status when reconciling booked amounts. A failed or pending outgoing payment
+still has a requested amount. An internal transfer appears in each participating wallet with its
+own transaction ID and direction. Subsequent status changes appear on the original row when
+you export again. SwissKnife exports the currently retained records, so a previously deleted
+expired invoice or failed payment will no longer appear.
