@@ -1,0 +1,36 @@
+---
+title: Connect a wallet to an agent
+image: /img/social.png
+---
+
+Use a dedicated credential when a tool needs access to one wallet. The owner chooses which operations it can perform and when it expires. An ordinary account credential represents the whole account.
+
+## Grant wallet access
+
+While signed in as the owner, send a `POST` to `/v1/me/wallets/{wallet_id}/agent-keys`. Supply a name, an RFC 3339 expiry within the next 365 days and at least one capability.
+
+```json
+{
+  "name": "Billing assistant",
+  "expires_at": "2026-12-15T12:00:00Z",
+  "capabilities": { "read": true, "receive": true, "spend": false }
+}
+```
+
+Choose a future expiry for your installation. The response includes the credential ID and a one-time secret beginning with `swka_`. Store that secret in your tool’s secret configuration. List credentials at the same URL with `GET`. To revoke one, send `DELETE /v1/me/wallets/{wallet_id}/agent-keys/{key_id}`.
+
+A client sends the secret in the `Wallet-Key` header on a supported wallet route. Read permission allows wallet information, balances, contacts, invoices, payments, quotes and submission status. Receive permission creates invoices. Spend permission submits a durable payment for execution. Each request checks the wallet, capability, expiration and revocation state.
+
+## Connect an MCP host
+
+Start the command with an API origin and wallet UUID. Set `SWISSKNIFE_MCP_WALLET_KEY` in the child process environment through your host’s secret configuration.
+
+```shell
+swissknife mcp --server https://wallet.example.com --wallet 11111111-2222-4333-8444-555555555555
+```
+
+The host communicates with the command over standard input and output. Use an HTTPS origin for a remote instance or HTTP on loopback for local development. Start a separate command for each wallet.
+
+The host discovers balance, wallet information, contacts, invoice creation and decoding, recent payments, payment submission and status tools. It can also read `wallet://balance` and `wallet://payments/recent`. Use decimal strings for exact millisatoshi values, including fees.
+
+For a payment, approve the destination, principal and maximum fee. Save the submission UUID with those terms before calling the tool. A retry with the same UUID and terms returns the original submission. Read its status until settlement or a terminal failure. An accepted submission can still be pending. Invoice creation creates another invoice on each call.
