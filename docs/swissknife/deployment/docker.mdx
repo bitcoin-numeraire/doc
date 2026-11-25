@@ -39,3 +39,14 @@ Set `NEXT_PUBLIC_SERVER_URL` to the public API origin, or leave it empty for a s
 ## Separate backend and dashboard
 
 The backend-only image sets `SWISSKNIFE_DASHBOARD_DIR=""`. The standalone dashboard serves on port `8080` and needs a build configured for the backend's public URL. [Kubernetes](./kubernetes.mdx) uses these two images.
+
+
+## Rolling out the Bitcoin withdrawal queue
+
+For a multi-replica upgrade, first run the compatibility revision across all existing
+replicas. It can read pending withdrawals without transaction IDs and write payment
+events after the event index changes. Then roll out the withdrawal worker and its
+migration and direct new withdrawal clients to the upgraded API. A single-instance
+installation can stop its previous process and start the new version. [Compatibility
+revision](https://github.com/bitcoin-numeraire/swissknife/pull/464) · [Withdrawal
+queue](https://github.com/bitcoin-numeraire/swissknife/pull/465)
