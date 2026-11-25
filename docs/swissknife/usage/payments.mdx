@@ -109,6 +109,30 @@ curl -X POST https://your-instance:3000/v1/me/wallets/<wallet-id>/bitcoin/addres
 
 The returned address stays the same until it is used on-chain, after which a new one is generated. You can optionally request a specific script `type` (`p2pkh`, `p2sh`, `p2wpkh`, or `p2tr`); when omitted, the instance default (`bitcoin_address_type`, defaults to `p2wpkh`) is used. The account-scoped route enforces wallet ownership. See the [on-chain wallet](#on-chain-bitcoin-wallet) section below for managing addresses.
 
+For one sale, send `{"dedicated": true}` in the address request. Each successful call
+allocates a different address and returns `dedicated: true`. Retain that address
+with your order. The wallet can continue receiving ordinary deposits on its existing
+address. To recover deposits after a disconnect, query
+`GET /v1/me/wallets/{wallet_id}/invoices?bitcoin_address=<address>`. Each matching
+invoice includes its Bitcoin output and settlement status.
+
+### Merchant checkout
+
+Open **Point of sale** from a Bitcoin wallet, enter the sale amount in whole sats,
+and optionally enter an order reference. The customer can scan one QR code for
+Lightning or on-chain Bitcoin when both methods are available. Checkout shows
+the method if only one provider operation succeeds.
+
+A detected on-chain payment can appear before it confirms when the provider
+reports mempool deposits. Checkout counts a payment toward the sale after it
+settles. Multiple deposits to the sale address can cover one order. The cashier
+can open the payment details or start the next sale.
+
+The current sale survives a reload in the same browser tab when session storage
+is available. Sound and vibration are optional on each device. A request is shown
+for up to 15 minutes. Closing it or letting it expire leaves the Bitcoin address
+valid. Late deposits remain visible in wallet activity.
+
 ## Sending
 
 A single endpoint handles all outgoing payments. The recipient `input` can be a BOLT11 invoice, an LNURL, or a Lightning Address; payments to another wallet on the same instance are settled instantly through the internal ledger.
