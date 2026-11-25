@@ -92,6 +92,7 @@ const sidebars: SidebarsConfig = {
         "swissknife/usage/accounts",
         "swissknife/usage/api-keys",
         "swissknife/usage/agent-wallets",
+        "swissknife/usage/paid-http-resources",
       ],
     },
     "swissknife/architecture/index",
