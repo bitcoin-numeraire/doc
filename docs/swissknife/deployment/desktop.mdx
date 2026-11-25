@@ -1,0 +1,19 @@
+---
+title: Desktop client
+sidebar_position: 4
+image: /img/social.png
+---
+
+The desktop client connects to a running SwissKnife dashboard. Your account, wallet balances and transaction history come from that instance. The client uses the system webview on macOS, Windows and Linux.
+
+1. Open SwissKnife and enter the dashboard URL. The default connects to the Numeraire hosted dashboard. Use your own dashboard origin for a self-hosted installation.
+2. If your instance redirects to a separate identity provider, expand **Single sign-on** and enter the provider origin. The hosted Numeraire provider is preconfigured.
+3. Choose **Open wallet** and sign in. Close the wallet window to return to the instance selector.
+
+Remote instances require HTTPS. HTTP works for a dashboard on your computer at a loopback address, such as `http://localhost:8080`. Use the dashboard origin including its port and omit paths, fragments and query parameters.
+
+On another device, connect to the same SwissKnife instance and sign in to the same account to access its wallets and transaction history.
+
+## Packaging status
+
+The desktop workflow builds review artifacts for macOS (Intel and Apple Silicon), Windows x64 and Linux x64. A public signed release and platform installation checks are tracked in [SwissKnife #477](https://github.com/bitcoin-numeraire/swissknife/issues/477). Operators can continue to deploy the instance with [Docker](./docker.mdx) or [Kubernetes](./kubernetes.mdx).
