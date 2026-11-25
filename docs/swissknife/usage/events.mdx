@@ -108,3 +108,14 @@ control retention and cleanup; no separate event service is required.
 
 When using a reverse proxy, allow streaming responses, disable response
 buffering, and set an idle timeout longer than the 15-second heartbeat interval.
+
+## Account notification inbox
+
+`GET /v1/me/notifications` lists the signed-in account’s received payments, settled outgoing payments and failed outgoing payments, newest first. Each item includes its source event ID, wallet, transaction ID, payment rail, description and available amount. Amounts are decimal strings in millisatoshis.
+
+- Pass `limit` (1–100, default 25) and use the returned `next_before` as the exclusive `before` cursor for the next page.
+- The response includes the total `unread_count` across the active inbox. `archived=true` lists archived notifications.
+- Send `PATCH /v1/me/notifications/{id}` with `{"action":"read"}` or `{"action":"archive"}`. Archiving also marks the item read.
+- Send `POST /v1/me/notifications/read` with `{"through":123}` to mark the currently displayed inbox read through that source event ID. Notifications that arrive later stay unread.
+
+A settled event creates one notification in the same transaction as the wallet update. Read and archived state persist across devices and process restarts. Source-event retention also controls inbox retention. Clients can refresh the inbox after an account event or reconnection.
