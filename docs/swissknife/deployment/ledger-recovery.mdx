@@ -1,0 +1,59 @@
+---
+title: Back up and recover the ledger
+sidebar_position: 5
+---
+
+SwissKnife stores account ownership, wallet balances, reservations and payment history in its application database. Make encrypted snapshots from a trusted operator host. Keep the decryption identity in a separate recovery location, and rehearse restoration after changes to your database or deployment.
+
+Use `scripts/ledger-backup.py` from the SwissKnife release you run. It requires Python 3.9+ and `age`. PostgreSQL also requires `pg_dump`, `pg_restore` and `createdb`; use a client version compatible with the source and destination servers. Direct staging files to a private, encrypted local disk with enough room for the snapshot and decrypted archive. The workflow emits the engine, backup start time, format version and snapshot checksum.
+
+## Create a snapshot
+
+Generate an age identity on your recovery host and store it securely. Give the backup host only the public recipient printed by `age-keygen -y operator-key.txt`. Set `AGE_RECIPIENT` to that public value. Multiple `--recipient` arguments allow independent recovery identities.
+
+```sh
+age-keygen -o operator-key.txt
+age-keygen -y operator-key.txt
+```
+
+For SQLite, use the database file visible to SwissKnife, including its live WAL in the same directory. The online backup API captures committed transactions. A new encrypted artifact is published only after the snapshot and encryption succeed.
+
+```sh
+python3 scripts/ledger-backup.py backup --sqlite /data/swissknife.db \
+  --work-dir /private-staging --recipient "$AGE_RECIPIENT" --output ledger.sqlite.age
+```
+
+For PostgreSQL, use the same host, database and TLS settings as the intended installation and a role that can read its complete contents. Supply libpq connection settings using a service definition or `PGHOST`, `PGPORT`, `PGUSER` and a protected `PGPASSFILE`. The tool takes a consistent native custom-format dump.
+
+```sh
+python3 scripts/ledger-backup.py backup --postgres swissknife \
+  --work-dir /private-staging --recipient "$AGE_RECIPIENT" --output ledger.postgres.age
+```
+
+Transfer the encrypted artifact to your backup destination. Record its start time and the SwissKnife release in the operations log. Keep the matching service configuration, JWT signing secret or external identity-provider configuration, and provider credentials separately. Follow the node provider’s own recovery procedure for channel state and seed material. A SwissKnife ledger snapshot cannot recover a Lightning node.
+
+## Rehearse recovery
+
+Use a separate host or database instance with outbound execution disconnected. For SQLite choose an unused filename in a private directory. For PostgreSQL use a fresh database name and a role with `CREATEDB`. The tool verifies decryption and the encrypted manifest before it installs data. It refuses to replace an existing destination.
+
+```sh
+python3 scripts/ledger-backup.py restore --sqlite /recovery/swissknife.db \
+  --work-dir /private-staging --identity operator-key.txt --input ledger.sqlite.age
+
+python3 scripts/ledger-backup.py restore --postgres swissknife_recovery \
+  --work-dir /private-staging --identity operator-key.txt --input ledger.postgres.age
+```
+
+A PostgreSQL restore runs in a single transaction. If restore fails after database creation, inspect the new database before removing it. Reapply the database owner and application grants before starting SwissKnife.
+
+Check the migration history against the source release and compare the wallet IDs, account owners, asset IDs, available units, reserved units and the status of known payments with your recorded recovery evidence. Run these read-only queries on the restored database before attaching a service.
+
+```sql
+SELECT version FROM seaql_migrations ORDER BY version;
+SELECT id, account_id, asset_id, available_amount, reserved_amount FROM wallet ORDER BY id;
+SELECT status, count(*) FROM payment GROUP BY status;
+```
+
+For a real incident, establish one authoritative writer. Reconcile provider activity since the snapshot with the recovered ledger using payment hashes and transaction IDs. Review pending payments, provider input leases and reservations before re-enabling outbound payments. A payment may have settled at the provider after the snapshot. Reconcile its outcome before any resend. Record the recovered cutoff and the first verified post-restore transaction.
+
+The underlying tools document their snapshot guarantees and encryption format. [SQLite online backup](https://www.sqlite.org/backup.html), [PostgreSQL logical backups](https://www.postgresql.org/docs/current/backup-dump.html), [age](https://age-encryption.org/).
