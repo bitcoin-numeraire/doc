@@ -312,6 +312,16 @@ API clients can create and list offers at `/v1/me/wallets/{wallet_id}/offers`. A
 
 Disable an offer from the drawer or use `DELETE /v1/me/wallets/{wallet_id}/offers/{id}`. Disabling stops new invoice requests. SwissKnife can still credit a payment the issuing node accepted against an earlier invoice. A single-use offer becomes disabled when the first payment settles. After a SwissKnife outage the original node's indexed invoice history restores missed receipts. Keep that node and its invoice history available. Both Core Lightning transports can manage offers belonging to the same node and network.
 
+Before deleting a wallet or its parent account, disable its offers and let the original node finish synchronizing accepted payments. While any offer can still receive funds or has receipts awaiting replay, deletion returns HTTP 409. The same check applies to bulk deletion.
+
+### Offer a human-readable receive name
+
+Ask your operator to enroll a reusable offer if your deployment publishes BIP353 names. Share the wallet ID and the offer's SwissKnife ID with the operator. Once the operator validates the signed DNS record, share the name with the Bitcoin symbol, for example `₿shop@example.com`. You can continue sharing the original offer or QR code.
+
+An operator can map a name to an existing offer and rotate it to another offer in the same wallet. Disable the offer to stop new invoice requests and withdraw its DNS record on the next publisher run. Cached records can remain visible until their DNS TTL expires. To retire just the name while continuing to accept direct offer payments, ask the operator to withdraw the binding.
+
+Wallet owners can read the current offer at `GET /v1/me/wallets/{wallet_id}/offers/{id}`. The publication service uses `GET /v1/offers/{id}` with a dedicated read-only service key. The [operator guide](https://github.com/bitcoin-numeraire/k8s-infra/blob/f06d73c05622bcbecbf8c1ee094847945faa44d7/tools/bip353/README.md) covers the delegated zone, DNSSEC, record ownership and the optional Kubernetes job.
+
 ## On-chain Bitcoin wallet
 
 The on-chain wallet (available for self-hosted CLN and LND) supports address management, wallet synchronization, and transaction preparation before broadcast.
