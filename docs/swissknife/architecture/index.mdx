@@ -78,8 +78,9 @@ The domains in v0.3.3 are:
 
 ## The liquidity provider abstraction
 
-SwissKnife is bring-your-own-node: it connects to a Lightning node you run, rather than
-custodying funds itself. Domains depend on `LnClient` for Lightning operations and
+SwissKnife records account wallet balances in its ledger. The operator configures a node
+to settle external payments. In a hosted deployment the operator controls this node, and
+one instance can serve wallets for many different accounts. Domains depend on `LnClient` for Lightning operations and
 `BitcoinWallet` for on-chain Bitcoin operations. The selected provider implements both
 interfaces, keeping node-specific RPCs in the infrastructure adapters.
 
