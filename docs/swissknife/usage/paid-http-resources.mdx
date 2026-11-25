@@ -41,6 +41,8 @@ The buyer pays the amount in the signed Lightning invoice. An outstanding invoic
 2. Check the invoice price and network. Pay it and keep its 32-byte preimage private. The invoice expires after half the access period or 120 seconds, whichever comes first.
 3. Repeat the GET with `Authorization: L402 <macaroon>:<hex-preimage>`. This bearer credential grants access until the expiry set when the challenge was issued. A failed upstream request returns HTTP 502. Retry with the same credential while it is valid.
 
+HTTP 401 means the server could not authenticate the supplied payment proof. Check that the macaroon and preimage belong to the same paid invoice before retrying. An authentic pass that has expired, exhausted its allowance, or belongs to earlier route terms receives a fresh HTTP 402 challenge. Review the new invoice price before paying again.
+
 The example costs 42 sats once and admits repeat downloads for ten minutes from challenge issuance. If you change the receiving wallet, upstream URL, route name, price or access duration, buyers need new passes. The server limits new invoices to 30 per minute per route per replica by default. Existing paid passes continue working when issuance is limited. The merchant can track the invoice and its settlement through normal wallet history.
 
 ## Sell individual requests or a pack
