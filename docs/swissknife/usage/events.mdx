@@ -119,3 +119,19 @@ buffering, and set an idle timeout longer than the 15-second heartbeat interval.
 - Send `POST /v1/me/notifications/read` with `{"through":123}` to mark the currently displayed inbox read through that source event ID. Notifications that arrive later stay unread.
 
 A settled event creates one notification in the same transaction as the wallet update. Read and archived state persist across devices and process restarts. Source-event retention also controls inbox retention. Clients can refresh the inbox after an account event or reconnection.
+
+Open the bell in the dashboard to see recent payments across your wallets. **View activity** opens the transaction in its original wallet. The unread badge follows your account across devices. Balance privacy also masks the amounts shown in the drawer and in live alerts.
+
+The **Preferences** tab controls live alerts for incoming and outgoing payments and optional sound. Both categories default to enabled and sound defaults to off. Muting a category preserves its inbox history. Browser audio permissions apply. Other clients can read these settings from `GET /v1/me/preferences` and change an individual preference using `PATCH /v1/me/preferences`.
+
+```json
+{
+  "dashboard_settings": {
+    "notifications": {
+      "incoming": true,
+      "outgoing": false,
+      "sound": false
+    }
+  }
+}
+```
