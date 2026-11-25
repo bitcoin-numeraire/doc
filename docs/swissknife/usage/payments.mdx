@@ -288,6 +288,14 @@ the administrative transaction table or with `DELETE /v1/payments/{id}`
 send flow. Use an invoice that is still valid, or request a new one. Pending
 payments cannot be deleted; wait for their outcome before trying again.
 
+## Pay a BOLT12 offer
+
+With Core Lightning, paste an offer (`lno1…`) or a negotiated invoice (`lni1…`) into the wallet send drawer. Choose **Review amount and fee** to see the payable amount and the maximum routing fee. For an amountless offer, enter the amount first. A payer note on an offer is shared with its issuer. Confirm to submit the payment, then follow its status in the wallet.
+
+API clients can submit the same targets to `POST /v1/me/wallets/{wallet_id}/payments/submissions`. Supply a new `idempotency_key` for each intended payment and reuse that key to recover a lost response. A separate payment to the same reusable offer needs its own key. The fee-estimate endpoint checks the offer locally on the node. The submission endpoint contacts the issuer, verifies the resulting invoice and saves its payment hash before it reserves the wallet balance.
+
+SwissKnife accepts single Bitcoin-denominated payments on the wallet's configured network. An explicitly supplied amount must match a fixed request. Expired requests, unsupported offer types and LND providers return HTTP 422.
+
 ## On-chain Bitcoin wallet
 
 The on-chain wallet (available for self-hosted CLN and LND) supports address management, wallet synchronization, and transaction preparation before broadcast.
