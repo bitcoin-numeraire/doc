@@ -154,6 +154,12 @@ Pass the merchant's original HTTP 402 `WWW-Authenticate` header to `decode_l402_
 
 Call `create_l402_authorization` with the original challenge and the settled wallet payment UUID. It verifies the payment hash and preimage and returns a private bearer credential. Send that header only to the merchant endpoint that issued the challenge. A wallet key with read permission can retrieve a settled payment's proof. The authorization tool returns the header to the caller. Present a cached header to the issuing merchant when you want to use the paid resource. Only the issuer can confirm that a pass still grants access. A request to a metered resource can consume one of its remaining uses.
 
+### Check a cached pass
+
+Configure the bridge with the exact resource URL, for example `--l402-resource https://merchant.example/l402/report`. Repeat the flag for each trusted resource. Call `check_l402_token` with that URL as `resource_url` and the cached header as `authorization`. The bridge checks the preimage locally and sends a restricted macaroon to the merchant's status endpoint. The check leaves the allowance available for a later download.
+
+For a request pack, an active result includes `remaining_requests`. For a time pass, the count is `null`. An exhausted pack has zero uses. An inactive pass has expired or its terms changed. An invalid proof fails verification. An unconfigured merchant, an unavailable issuer or an issuer without this SwissKnife endpoint returns `unknown`. Another buyer sharing the pass can use a request after the check.
+
 ## Export spending reports
 
 An operator with account-read permission can request `GET /v1/accounts/{account_id}/spending-report` for JSON or `/v1/accounts/{account_id}/spending-report.csv` for CSV. Reports include payments admitted while a budget was active. A pending payment contributes its reserved amount including its maximum fee. A settled payment contributes its actual debit, and a released reservation contributes zero.
