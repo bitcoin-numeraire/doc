@@ -30,9 +30,28 @@ Config values for the application's business logic. To be placed at the root.
 | `auth_provider`        | Authentication provider                                                                    |
 | `dashboard_dir`        | Filesystem path to the bundled dashboard static assets                                     |
 
-Set `host` to the public API base URL. SwissKnife uses it to construct LNURL-pay
-callback and LUD-21 verification URLs, so it must be reachable by payer wallets
-and payment integrations.
+Set `SWISSKNIFE_DOMAIN` to the domain in a Lightning address such as
+`alice@pay.example.org` and `SWISSKNIFE_HOST` to the public API base URL such as
+`https://api.example.org`. The API host serves LNURL-pay discovery, callbacks and
+LUD-21 verification. When the domains differ, route
+`https://pay.example.org/.well-known/lnurlp/{username}` to the same discovery
+handler so payers can resolve the human-readable address.
+
+The all-in-one container starts with local-only receiving settings. Set both
+environment variables when publishing it. External wallets need HTTPS or a
+reachable Tor onion service. An onion URL may use HTTP. The dashboard reads the
+instance settings from the public `GET /v1/system/receive-identity` endpoint.
+An operator can check this response before sharing a Lightning address or QR code.
+
+```json
+{
+  "domain": "pay.example.org",
+  "lnurl_base_url": "https://api.example.org/.well-known/lnurlp/"
+}
+```
+
+The endpoint returns `null` for an unset public identity or discovery URL.
+Local users can still create and share individual Lightning invoices.
 
 ### Web server
 

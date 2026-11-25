@@ -48,6 +48,11 @@ curl -X POST https://your-instance:3000/v1/me/lightning-address \
   }'
 ```
 
+Open **Identity → Lightning** to copy your registered address or its LNURL QR
+code. When the instance has no public domain, the page explains which setting
+your administrator needs to configure. Individual invoices are available in
+**Receive**.
+
 Lightning Addresses are account-level handles. SwissKnife routes incoming invoices to the
 account's native-BTC wallet for the node's configured network; callers cannot select an
 incompatible network or a non-BTC asset. Account ownership authorizes the `/v1/me` registration,
