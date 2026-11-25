@@ -21,6 +21,20 @@ Choose a future expiry for your installation. The response includes the credenti
 
 A client sends the secret in the `Wallet-Key` header on a supported wallet route. Read permission allows wallet information, balances, contacts, invoices, payments, quotes and submission status. Receive permission creates invoices. Spend permission submits a durable payment for execution. Each request checks the wallet, capability, expiration and revocation state.
 
+### Save wallet contacts
+
+Grant `manage_contacts` to a credential that should add, relabel or remove entries in one wallet’s address book. Grant `read` if the client also needs to list the book. Existing credentials keep their original permissions.
+
+An owner or a contact editor can send the following body to `POST /v1/me/wallets/{wallet_id}/saved-contacts`.
+
+```json
+{ "ln_address": "billing@example.com", "label": "Supplier billing" }
+```
+
+Saving the same address updates its optional label and preserves the original save time. The domain is compared case-insensitively. Use `GET` on the same collection to list entries, or `DELETE /v1/me/wallets/{wallet_id}/saved-contacts/{ln_address}` to remove one. The existing `contacts` endpoint lists Lightning Addresses from settled payment history. Removing an address-book entry preserves that history.
+
+In an MCP host, use `add_contact` to save or relabel an address and `list_saved_contacts` to read the book. The `list_contacts` tool displays contacts from payment history.
+
 ## Connect an MCP host
 
 Start the command with an API origin and wallet UUID. Set `SWISSKNIFE_MCP_WALLET_KEY` in the child process environment through your host’s secret configuration.
