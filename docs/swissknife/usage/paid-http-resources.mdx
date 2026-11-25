@@ -29,3 +29,11 @@ Use HTTPS on the public endpoint. Restrict direct access to the upstream if the 
 3. Repeat the GET with `Authorization: L402 <macaroon>:<hex-preimage>`. This bearer credential grants access until the expiry set when the challenge was issued. A failed upstream request returns HTTP 502. Retry with the same credential while it is valid.
 
 The example costs 42 sats once and admits repeat downloads for ten minutes from challenge issuance. If you change the receiving wallet, upstream URL, route name, price or access duration, buyers need new passes. The server limits new invoices to 30 per minute per route per replica by default. Existing paid passes continue working when issuance is limited. The merchant can track the invoice and its settlement through normal wallet history.
+
+## Sell individual requests or a pack
+
+Add `requests_per_payment = 1` to the route for a single successful response, or set a larger positive integer for a pack. For example, `requests_per_payment = 10` with the configuration above buys up to ten successful downloads for 42 sats within ten minutes of challenge issuance. The signed Lightning invoice describes the request count. Omitting this setting keeps time passes already issued for that route valid.
+
+A failed or oversized upstream response leaves the allowance available. SwissKnife buffers the bounded response, records one use in its database, then sends the response to the buyer. A disconnection after recording a use can still count. Replicas sharing the database enforce a single allowance and preserve it across server restarts. Use a side-effect-free GET upstream. Simultaneous callers can fetch the same resource while competing for the last use, and only the winning request receives the resource.
+
+After exhaustion the client receives a new payment challenge, subject to the route's invoice issuance limit. Changing the pack size changes the signed terms and requires a new pass. Coordinate changes across replicas and allow existing passes to expire before replacing the configuration if previous buyers should receive their remaining downloads.
