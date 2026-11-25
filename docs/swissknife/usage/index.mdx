@@ -99,6 +99,14 @@ The dashboard loads the full account wallet list into its account context. The w
 the header controls every wallet-scoped page and persists `active_wallet_id` in your account
 preferences; changing wallets does not infer or silently fall back to the first wallet.
 
+The balance visibility switch, display unit, default receive address type, and display
+currency follow the signed-in account. To hide balances from an API client, send
+`PATCH /v1/me/preferences` with `{"dashboard_settings":{"hide_balances":true}}`.
+The server merges the supplied fields so another device can change the active wallet
+independently. A null value removes a setting. Use `GET /v1/me/preferences` to read
+the result or `PUT /v1/me/preferences` to replace the complete document.
+
+
 ## Where to go next
 
 - [Payments](./payments.mdx): receive, send, estimate fees, and manage on-chain addresses.
