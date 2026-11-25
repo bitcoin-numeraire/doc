@@ -172,7 +172,15 @@ Admins can send on behalf of any wallet using the non-`/me` endpoint [`POST /v1/
 
 ## Fee estimates and pending payments
 
-`POST /v1/me/wallets/{wallet_id}/payments/fee-estimate` accepts the same payment input as sending. Lightning quotes distinguish an optional estimated fee from the hard maximum enforced by the provider. On-chain quotes temporarily prepare and release a transaction; the actual send prepares again, so its final fee can differ. Internal transfers quote zero fees.
+`POST /v1/me/wallets/{wallet_id}/payments/fee-estimate` accepts the same payment input as sending. Lightning quotes distinguish an optional estimated fee from the hard maximum enforced by the provider. An on-chain preview asks the provider to estimate a single-recipient transaction, including change when applicable. It is available from an empty SwissKnife wallet. Previewing leaves wallet balances, payment history and provider input leases unchanged.
+
+For an external Bitcoin address, `estimated_fee_msat` is the estimated miner fee. The
+`onchain` object reports the fee in satoshis, the fee rate in satoshis per 1,000 weight
+units, and LND's confirmation target when applicable. Core Lightning uses its normal
+priority. For compatibility, on-chain `maximum_fee_msat` and `maximum_total_msat` mirror
+the preview. The preview grants no authority to spend. Sending prepares a new transaction
+at the then-current fee. If the provider cannot estimate, the API returns HTTP 503;
+the caller can retry. An internal transfer continues to quote zero fees.
 
 An HTTP success response can contain a pending payment. If a Lightning send or on-chain broadcast has an unknown outcome, SwissKnife keeps its reservation instead of making the funds spendable again. A later node result can settle or fail the payment; some unresolved cases need manual reconciliation. Do not resend simply because the original HTTP request timed out.
 
