@@ -55,3 +55,17 @@ Read limits and current usage with `GET` on the same URL. A missing or disabled 
 The day and month begin at midnight UTC. The week begins on Monday. A payment counts against the periods in which the wallet first accepted it, including when its settlement arrives in a later period. Retrying the same submission leaves usage unchanged. Incoming funds and administrative credits do not consume the budget.
 
 Disabling the budget lets new payments proceed without enforcement. Re-enabling it retains previously charged usage in the current periods. Payments admitted while it was disabled are outside that budget. Roll out the enforcing server version to every instance that can submit a payment before enabling a production policy.
+
+## Connect over Streamable HTTP
+
+For an MCP client on another machine, run a dedicated wallet connection bound to loopback. Set `SWISSKNIFE_MCP_WALLET_KEY` on the SwissKnife MCP host and generate an independent 32-byte secret with `openssl rand -hex 32` for `SWISSKNIFE_MCP_HTTP_TOKEN`.
+
+```sh
+swissknife mcp --server https://wallet.example.com \
+  --wallet 89b4741a-62d3-4849-a848-79396f2ad427 \
+  --http-listen 127.0.0.1:8452
+```
+
+Use a private tunnel to the loopback listener, or terminate HTTPS at a reverse proxy and pass `--public-origin https://mcp.example.com` to the same command. Forward the exact `/mcp` path and the public Host, preserve `Authorization`, and disable buffering for event streams. The client configures a Streamable HTTP endpoint and sends `Authorization: Bearer <transport-token>` on each request. Store the token in the client's secrets configuration.
+
+The transport token grants access to this single wallet connection. Its tools use the wallet credential on the server, so revocation, expiry, payment approvals required by the client, and account spending limits continue to apply. For independent accounts or distinct permissions, configure separate endpoints and secrets. Rotate the transport token by restarting the MCP process. The default invocation continues to serve stdio.
