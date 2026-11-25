@@ -3,7 +3,7 @@ title: Sell access to an HTTP resource
 image: /img/social.png
 ---
 
-SwissKnife can charge a fixed Lightning price for access to a report, file or API response. The merchant receives the funds in a native Bitcoin wallet on the server's network. A buyer needs a Lightning payer that can return the invoice preimage.
+SwissKnife can charge a fixed or merchant-quoted Lightning price for access to a report, file or API response. The merchant receives the funds in a native Bitcoin wallet on the server's network. A buyer needs a Lightning payer that can return the invoice preimage.
 
 ## Configure a resource
 
@@ -21,6 +21,19 @@ challenges_per_minute = 30
 ```
 
 Use HTTPS on the public endpoint. Restrict direct access to the upstream if the resource should only be available to paying clients. Each public route accepts GET. SwissKnife leaves the operator-configured upstream URL intact and sends a fresh request without buyer cookies, query parameters or credentials. Successful responses are served as downloads, with a 2 MiB limit and a 10-second upstream timeout.
+
+## Quote a price for each new invoice
+
+If a report's price changes during the day, add a quote URL to its route and set the highest price you will charge.
+
+```toml
+quote_url = "https://pricing.example.com/reports/daily"
+price_sats = 60
+```
+
+SwissKnife sends a GET to that exact URL when a buyer needs a new invoice. The service returns JSON such as `{"price_msat":21345}` for 21.345 sats. Use an integer from one millisatoshi up to the configured ceiling. The callback receives the operator-configured path and query. Buyer headers and query parameters stay private.
+
+The buyer pays the amount in the signed Lightning invoice. An outstanding invoice keeps its original quote, and buyers can reuse a valid paid pass during a quote-service outage. New challenges return HTTP 503 if the quote exceeds the ceiling, the service redirects, its response exceeds 1 KiB, or the request takes longer than three seconds. Failed quote attempts count toward the route's challenge limit. Changing the callback URL or the ceiling changes the route's signed terms, so allow existing passes to expire before switching either setting.
 
 ## Buy and reuse access
 
