@@ -296,6 +296,14 @@ API clients can submit the same targets to `POST /v1/me/wallets/{wallet_id}/paym
 
 SwissKnife accepts single Bitcoin-denominated payments on the wallet's configured network. An explicitly supplied amount must match a fixed request. Expired requests, unsupported offer types and LND providers return HTTP 422.
 
+## Pay a BIP353 name
+
+Enter a recipient such as `₿shop@example.com` in the send drawer. The Bitcoin symbol selects BIP353. A plain `shop@example.com` uses the existing Lightning Address or local wallet lookup. SwissKnife accepts ASCII names and the ASCII punycode spelling of internationalized names.
+
+Choose **Review amount and fee**. Core Lightning resolves the DNSSEC-signed payment instructions and SwissKnife checks the offer against the wallet network and amount. Enter an amount for an open request. If the recipient changes the offer before you confirm, review the new quote. The settled transaction retains the normalized name.
+
+For API integrations, quote the name at the wallet's `payments/fee-estimate` endpoint and pass the returned `resolved_offer_id` as `expected_offer_id` to `payments/submissions` alongside the approved amount, fee cap and idempotency key. A changed offer returns HTTP 409 with code `payment_target_changed` before any wallet funds are reserved. Replaying an already accepted request with its original key retrieves the original payment. DNS validation failures and names without a payable Lightning offer return HTTP 422. This flow requires a Core Lightning node with `fetchbip353` enabled.
+
 ## Receive with a reusable offer
 
 In **Receive → BOLT12**, enter a description and optionally a fixed amount in sats. Leave the amount empty for donations or tips. Enable **Allow one payment only** for a single-use offer. Choose **Create offer**, then copy the offer or display its QR code. The description is public. Each incoming payment creates a separate invoice in the owning wallet, with its own payment hash, amount and optional payer note.
