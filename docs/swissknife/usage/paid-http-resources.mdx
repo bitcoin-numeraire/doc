@@ -60,3 +60,28 @@ In the dashboard, open **Wallet → Invoices → Merchant revenue**. Choose the 
 Use the wallet owner's account credential or a wallet credential with read access to request `GET /v1/me/wallets/{wallet_id}/l402/revenue`. The report groups retained, settled invoices by the merchant route that issued them. Each row contains the route, the settled invoice count, the amount received and the recorded incoming fees. Amounts are decimal strings in millisatoshis. Revenue is recorded at settlement even if the buyer has yet to use the pass. Redeeming the same pass again does not add revenue.
 
 The default period is the past 30 UTC calendar days including today. Supply inclusive dates such as `?from=2026-11-01&through=2026-11-30` for a period of up to 366 days. Previous request packs with a recorded use can be attributed during upgrade. Older invoices without a recorded route are omitted. Deleting a settled invoice removes it from this report.
+
+## Let a wallet owner publish a route
+
+Assign a resource to a wallet by adding an entry under `l402.origins` in the server configuration. The root key is the same deployment secret used for fixed routes. Each origin names one complete upstream URL, receiving wallet, price ceiling and access period.
+
+```toml
+[l402.origins.daily-data]
+wallet_id = "89b4741a-62d3-4849-a848-79396f2ad427"
+target = "https://reports.example.com/daily.json"
+price_sats = 50
+access_seconds = 600
+requests_per_payment = 3
+```
+
+The wallet owner reads their assigned resources and published routes with `GET /v1/me/wallets/{wallet_id}/l402/routes`. The response contains origin names and terms. Upstream and pricing URLs stay on the server. Choose a route name of 1–57 lowercase letters, digits or hyphens. Send its terms to `PUT /v1/me/wallets/{wallet_id}/l402/routes/{name}`.
+
+```json
+{ "origin": "daily-data", "price_msat": "21500", "enabled": true }
+```
+
+This publishes `GET /l402/w/{wallet_id}/{name}` for 21.5 sats. An optional operator-configured quote service can offer a lower price for each invoice. The price chosen by the wallet must fit within the origin ceiling. The origin’s new-invoice allowance is shared by its published names on each replica.
+
+Use the same PUT to change the price or set `enabled` to `false`. A paused route returns HTTP 404 to new buyers. Already issued invoices keep their quoted price, and buyers can redeem valid passes while sales are paused. A route name stays bound to its first origin. Create another name to sell a different resource. Independent wallets can use the same name and receive separate payments. These sales appear in the wallet’s revenue report as `wallet/{name}`.
+
+Removing the operator’s origin assignment or changing its resource or access terms can invalidate existing passes. Coordinate operator changes across replicas and allow current passes to expire before replacing their resource.
