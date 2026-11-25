@@ -22,6 +22,20 @@ requests.
 Account aggregates include the same lightweight wallet records used by the dashboard account and
 wallet selectors. Full wallet resources remain behind wallet-by-ID endpoints.
 
+## Register a wallet for an asset
+
+In the dashboard, open the account and choose **Register New Wallet**, or open the wallet
+directory and select the account in the registration form. Choose an asset by its name,
+ticker, and network. An account can hold one wallet per catalog asset, so existing wallets
+are excluded from the choices.
+
+API clients can call `GET /v1/assets` with a valid account credential to discover the same
+catalog. Match the protocol, network, and asset reference when choosing an asset. Some
+networks share a display ticker. Pass its `id` as `asset_id` to `POST /v1/wallets` with the
+target `account_id` and the `write:wallet` permission. The catalog includes assets even before
+their first wallet exists. The configured liquidity provider determines which networks
+support deposits and payments on this installation.
+
 ## Local logins
 
 For deployments using `auth_provider = "jwt"`, the dashboard Account directory provides local
