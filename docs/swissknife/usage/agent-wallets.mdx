@@ -114,6 +114,25 @@ Use a private tunnel to the loopback listener, or terminate HTTPS at a reverse p
 
 The transport token grants access to this single wallet connection. Its tools use the wallet credential on the server, so revocation, expiry, payment approvals required by the client, and account spending limits continue to apply. For independent accounts or distinct permissions, configure separate endpoints and secrets. Rotate the transport token by restarting the MCP process. The default invocation continues to serve stdio.
 
+### Connect Claude Code or OpenClaw
+
+With the wallet bridge listening on port 8452, provide `SWISSKNIFE_MCP_HTTP_TOKEN` in the host's private environment. For Claude Code, add your SwissKnife checkout as a local marketplace and install the plugin.
+
+```shell
+claude plugin marketplace add /absolute/path/to/swissknife
+claude plugin install swissknife-wallet@numeraire
+claude mcp list
+```
+
+For OpenClaw 2026.11.10, configure the endpoint in the operator-managed profile. This version resolves environment references there. Its Claude-bundle importer passes the header placeholder through literally.
+
+```shell
+openclaw mcp set swissknife-wallet '{"transport":"streamable-http","url":"http://127.0.0.1:8452/mcp","headers":{"Authorization":"Bearer ${SWISSKNIFE_MCP_HTTP_TOKEN}"}}'
+openclaw mcp probe swissknife-wallet
+```
+
+For a billing account and a purchasing account, run two wallet bridges with different ports, delegated keys and transport tokens. Give them distinct host connection names such as `billing-wallet` and `purchasing-wallet`. Select that connection when calling a tool. Each connection retains the permissions and account budget of its wallet.
+
 ## Access an L402 merchant
 
 Pass the merchant's original HTTP 402 `WWW-Authenticate` header to `decode_l402_challenge`. Review the signed invoice, payee, expiry and exact amount. Use the regular `send_payment` tool with the approved principal, maximum fee and a stable idempotency UUID. Check the submission until it settles.
