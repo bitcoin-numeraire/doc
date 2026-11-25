@@ -6,11 +6,11 @@ image: /img/social.png
 
 SwissKnife uses liquidity providers to send and receive payments. The current Core Lightning and LND adapters support both Lightning payments and on-chain Bitcoin, including deposit addresses, wallet synchronization, fee estimation, and transaction broadcast.
 
-SwissKnife uses the node as a liquidity provider. Wallet balances are independent of the funds on that node; backing and liquidity are the operator's responsibility, and switching nodes does not rewrite balances.
+The operator manages provider funds and liquidity. SwissKnife records each account wallet’s balance in its own database. Changing the configured node preserves those balances. For recovery, keep the instance configuration and secrets, the SwissKnife database, and the node’s wallet and channel recovery material.
 
 :::tip
 The recommended way to get started with Numeraire SwissKnife is to connect a self-hosted node: **Core Lightning (CLN)** or **LND**.
-Both are supported over gRPC and REST, run fully non-custodially, and let you keep complete control of your node and liquidity.
+Both support gRPC and REST. The person running the node controls its funds and channel liquidity.
 :::
 
 :::note

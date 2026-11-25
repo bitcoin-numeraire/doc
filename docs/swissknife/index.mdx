@@ -6,8 +6,9 @@ image: /img/social.png
 
 Numeraire SwissKnife is a wallet and transaction orchestrator enabling easy integration of Bitcoin, Lightning and Nostr to any entity that wishes so without the complexities of above technologies.
 
-Running your own SwissKnife instance allows you to be self-sovereign, have full control over your funds and privacy and participate in the Bitcoin network in a trustless way. We highly recommend
-installing SwissKnife on your own hardware, either on your desktop, on a Raspberry Pi or on a server in the cloud. If you don't want to be bothered, you can use the [Numeraire Dashboard](https://app.numeraire.tech), which is essentially the SwissKnife ran as a service.
+An account can hold several wallets. Each wallet records that account’s balance and payments for one asset on a particular network. The SwissKnife instance maintains the ledger and its configured node settles external payments.
+
+You can run SwissKnife on a desktop, a Raspberry Pi or a cloud server. When you also run the node, you control the installation and its recovery material. In a hosted service, the operator runs the instance and node. An administrator with transaction-write permission can issue invoices and send payments for a selected wallet. To access an account hosted by Numeraire, sign in to the [Numeraire Dashboard](https://app.numeraire.tech).
 
 <div class="center-container">
   <img src="/img/article_images/account/wallet_overview.png" alt="Numeraire SwissKnife" />
@@ -41,10 +42,8 @@ installing SwissKnife on your own hardware, either on your desktop, on a Raspber
 SwissKnife connects to self-hosted liquidity providers for both Lightning and on-chain Bitcoin. Core Lightning (CLN) and LND are each supported over gRPC and REST (`cln_grpc`, `cln_rest`, `lnd_grpc`, `lnd_rest`):
 
 - [`Core Lightning`](https://corelightning.org/) (via gRPC and REST):
-  - Non-custodial
   - Run your own node
   - Manage your own liquidity.
 - [`LND`](https://github.com/lightningnetwork/lnd) (via gRPC and REST):
-  - Non-custodial
   - Run your own node
   - Manage your own liquidity
