@@ -141,8 +141,8 @@ Checkout waits for its receipt lookups before displaying a payment request. When
 the provider detects an unconfirmed deposit, the cashier sees the pending amount
 and the QR stays hidden until confirmation. If the confirmed total falls short,
 checkout shows an on-chain QR for the remaining whole sats at the same address.
-For example, after 10,000 sats confirm on a 25,000-sat sale, the next QR asks
-for 15,000 sats. The customer can scan or copy it until the request expires.
+For example, after 15,000 sats confirm on a 25,000-sat sale, the next QR asks
+for 10,000 sats. The customer can scan or copy it until the request expires.
 
 Once the confirmed total covers the sale, open the payment details or start the
 next sale. Each confirmed receipt remains linked from checkout.
@@ -151,6 +151,26 @@ The current sale survives a reload in the same browser tab when session storage
 is available. Sound and vibration are optional on each device. A request is shown
 for up to 15 minutes. Closing it or letting it expire leaves the Bitcoin address
 valid. Late deposits remain visible in wallet activity.
+
+#### Reconcile a sale in the wallet statement
+
+In **Activity**, select the merchant wallet and choose **Export statement**.
+Select the UTC dates of the payments and download the CSV. Find the order
+reference in `description` and match the settled rows to the receipt IDs shown
+in checkout.
+
+For a 25,000-sat sale paid with a 15,000-sat deposit and a 10,000-sat internal
+transfer, the statement can contain three incoming rows for the same order.
+
+| `ledger` | `status` | `gross_amount_msat` | Amount collected |
+| --- | --- | ---: | ---: |
+| Onchain | Settled | 15000000 | 15,000 sats |
+| Internal | Settled | 10000000 | 10,000 sats |
+| Lightning | Pending | 25000000 | 0 sats |
+
+The two settled receipts account for the full sale. The pending row records the
+original Lightning payment request. Count a receipt once by its `transaction_id`
+and record any fee from `fee_msat` separately.
 
 ## Sending
 
