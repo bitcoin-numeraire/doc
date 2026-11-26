@@ -1,0 +1,235 @@
+---
+title: Connect a wallet to an agent
+image: /img/social.png
+---
+
+:::note Feature preview
+These features are in draft review. Use the [wallet MCP tracker](https://github.com/bitcoin-numeraire/swissknife/issues/214) and [spending controls tracker](https://github.com/bitcoin-numeraire/swissknife/issues/215) to find the implementation for the operation you want to try.
+:::
+
+Use a dedicated credential when a tool needs access to one wallet. The owner chooses which operations it can perform and when it expires. An ordinary account credential represents the whole account.
+
+## Grant wallet access
+
+While signed in as the owner, send a `POST` to `/v1/me/wallets/{wallet_id}/agent-keys`. Supply a name, an RFC 3339 expiry within the next 365 days and at least one capability.
+
+```json
+{
+  "name": "Billing assistant",
+  "expires_at": "2026-12-15T12:00:00Z",
+  "capabilities": { "read": true, "receive": true, "spend": false }
+}
+```
+
+Choose a future expiry for your installation. The response includes the credential ID and a one-time secret beginning with `swka_`. Store that secret in your tool’s secret configuration. List credentials at the same URL with `GET`. To revoke one, send `DELETE /v1/me/wallets/{wallet_id}/agent-keys/{key_id}`.
+
+A client sends the secret in the `Wallet-Key` header on a supported wallet route. Read permission allows wallet information, balances, contacts, invoices, payments, quotes and submission status. Receive permission creates invoices. Spend permission submits a durable payment for execution. Each request checks the wallet, capability, expiration and revocation state.
+
+### Save wallet contacts
+
+Grant `manage_contacts` to a credential that should add, relabel or remove entries in one wallet’s address book. Grant `read` if the client also needs to list the book. Existing credentials keep their original permissions.
+
+An owner or a contact editor can send the following body to `POST /v1/me/wallets/{wallet_id}/saved-contacts`.
+
+```json
+{ "ln_address": "billing@example.com", "label": "Supplier billing" }
+```
+
+Saving the same address updates its optional label and preserves the original save time. The domain is compared case-insensitively. Use `GET` on the same collection to list entries, or `DELETE /v1/me/wallets/{wallet_id}/saved-contacts/{ln_address}` to remove one. The existing `contacts` endpoint lists Lightning Addresses from settled payment history. Removing an address-book entry preserves that history.
+
+In an MCP host, use `add_contact` to save or relabel an address and `list_saved_contacts` to read the book. The `list_contacts` tool displays contacts from payment history.
+
+## Connect an MCP host
+
+Start the command with an API origin and wallet UUID. Set `SWISSKNIFE_MCP_WALLET_KEY` in the child process environment through your host’s secret configuration.
+
+```shell
+swissknife mcp --server https://wallet.example.com --wallet 11111111-2222-4333-8444-555555555555
+```
+
+The host communicates with the command over standard input and output. Use an HTTPS origin for a remote instance or HTTP on loopback for local development. Start a separate command for each wallet.
+
+### Confirm an incoming invoice
+
+Keep the SwissKnife UUID returned by `create_invoice`. Pass it as `id` to `get_invoice` on the same wallet connection. The credential needs `receive` to issue an invoice and `read` to check its receipt. You can give a reconciliation client read access separately.
+
+The result includes the invoice status, ledger, requested and received amounts in decimal millisatoshi strings, and the settlement timestamp when available. Use `Settled` and the received amount to confirm a receipt. Checking the same UUID again retrieves the current state.
+
+### Redeem a withdrawal voucher
+
+Start the bridge with `--withdraw-origin https://issuer.example` for a service you use. If that service submits invoices to a different origin, add a second `--withdraw-origin` for it. The bridge advertises the voucher tools when at least one service is configured. A voucher authorizes a withdrawal from its issuer. Keep it in the private MCP conversation.
+
+1. Pass the encoded voucher to `inspect_lnurl_withdraw`. Review the service, callback origin and amount range. A maximum of zero means that the service has no funds available for this voucher.
+2. Choose the exact amount in millisatoshis. Call `create_invoice` and keep the returned UUID before submitting anything to the service.
+3. Call `lnurl_withdraw` with the voucher, the saved `invoice_id` and the approved `amount_msat`. Creating an invoice requires receive permission. Submitting that wallet invoice and checking it require read permission.
+4. Use `get_invoice` with the same UUID to check for settlement. An `accepted` callback acknowledges submission. A `rejected` or `unknown` callback leaves the invoice available for reconciliation. Confirm its status before retrying.
+
+### Run with Docker Compose
+
+The SwissKnife checkout includes a wallet and MCP example under `examples/mcp`. Set `SWISSKNIFE_IMAGE` to a build that includes the MCP command. Configure the wallet's provider, certificates and signing secret as described in the example README, then run `docker compose up -d wallet` from that directory. Set `SWISSKNIFE_WALLET_ID` and `SWISSKNIFE_MCP_WALLET_KEY` in the MCP host's private environment.
+
+Configure the host to execute the following command, replacing the path with your checkout. The MCP process shares the wallet's loopback connection. Only the wallet container receives the provider credentials and database volume.
+
+```shell
+docker compose -f /path/to/examples/mcp/compose.yaml run --rm --no-deps -T mcp
+```
+
+### Run with a local npm package
+
+If your MCP host launches tools with `npx`, run `npm pack ./packages/swissknife-mcp` from the SwissKnife repository. Put the matching SwissKnife binary on your host's PATH or set `SWISSKNIFE_BIN` to its absolute path. Configure the host to launch the resulting package, substituting the tarball's full path and your wallet UUID.
+
+```shell
+npx --offline --yes --package /path/to/package.tgz swissknife-mcp --server https://wallet.example.com --wallet 11111111-2222-4333-8444-555555555555
+```
+
+Both launch methods read the scoped wallet key from the host environment. Revoking the key ends its access.
+
+The host discovers balance, wallet information, contacts, invoice creation and decoding, recent payments, payment submission and status tools. It can also read `wallet://balance` and `wallet://payments/recent`. Use decimal strings for exact millisatoshi values, including fees.
+
+### Subscribe to wallet changes
+
+Subscribe to either resource with a wallet key that has read permission. An update identifies the resource URI. Call `resources/read` to fetch the current balance or the twenty most recent outgoing payments. Changes between checks can arrive as a single update.
+
+Clients using protocol version `2026-07-28` can open a `subscriptions/listen` request over stdio or Streamable HTTP. Request the resource URIs in `notifications.resourceSubscriptions`. Each accepted resource sends an initial update when its feed attaches. Cancel the request or close the HTTP response stream to stop listening.
+
+Clients using protocol version `2025-11-25` over stdio can use `resources/subscribe` and `resources/unsubscribe` with a `uri` parameter. Read the resource after subscribing to obtain its starting value. Older HTTP clients can read both resources directly.
+
+While clients are subscribed, SwissKnife MCP checks each selected resource about every three seconds using its scoped wallet key. Closing the last subscription stops those checks. An established feed retries temporary connection and server failures with increasing delays up to 30 seconds. After the API recovers, a change since the last successful check triggers an update. If the credential expires or is revoked, configure a new credential with read access and subscribe again.
+
+For a payment, approve the destination, principal and maximum fee. Save the submission UUID with those terms before calling the tool. A retry with the same UUID and terms returns the original submission. Read its status until settlement or a terminal failure. An accepted submission can still be pending. Invoice creation creates another invoice on each call.
+
+## Find outgoing payments
+
+Use `list_payments` with a wallet credential that has read access. To find failed Lightning payments, call the tool with:
+
+```json
+{ "status": "Failed", "ledger": "Lightning", "limit": 10, "offset": 0 }
+```
+
+You can use either filter independently. Status accepts `Pending`, `Settled` or `Failed`. Ledger accepts `Lightning`, `Internal` or `Onchain`. The API filters the selected wallet before applying pagination. It returns the newest matches first, using the payment ID to order records with the same creation time. A page defaults to 20 payments and can contain up to 100. The next page starts at the previous offset plus the number of results returned. New payments or status changes between calls can move a payment between pages.
+
+For the unfiltered recent activity feed, subscribe to `wallet://payments/recent`.
+
+## Set an account spending budget
+
+Open an account in **Admin → Accounts** and select **Set spending limits**. Enter a per-payment, daily, weekly or monthly limit in sats, with up to three decimal places. A blank field leaves that period unrestricted. Zero blocks positive payments. Use a separate account for each agent that needs an independent budget. All wallets owned by one account draw from the same limits.
+
+The dashboard offers three example templates in sats. Choosing one fills the form. Review the amounts, edit individual limits as needed, and select **Save limits** to apply them. Closing the editor discards your changes.
+
+| Template | Per payment | Per agent in a rolling hour | Daily | Weekly | Monthly |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Conservative | 10 | 30 | 100 | 500 | 2,000 |
+| Moderate | 50 | 150 | 500 | 2,500 | 10,000 |
+| Generous | 100 | 300 | 1,000 | 5,000 | 20,000 |
+
+The operator needs account write permission to change limits and account read permission to inspect usage. Give the agent a wallet credential. Keep the operator credential outside its process.
+
+The API accepts decimal **millisatoshi strings** at `PUT /v1/accounts/{account_id}/spending-policy`. This example limits a single payment to 100 sats and the entire day to 1,000 sats.
+
+```json
+{
+  "per_payment_msat": "100000",
+  "daily_msat": "1000000"
+}
+```
+
+Read limits and current usage with `GET` on the same URL. A missing or disabled policy returns HTTP 404. A payment that would exceed a limit returns HTTP 422 before dispatch. Its reservation includes the maximum fee. Settlement replaces the reservation with the actual amount and fee. Failure or cancellation releases the reserved budget. If a provider later confirms a payment, SwissKnife records the actual debit.
+
+Calendar usage uses exact decimal millisatoshi strings, even when repeated payments take the total above the maximum value of a single payment. The day and month begin at midnight UTC. The week begins on Monday. A payment counts against the periods in which the wallet first accepted it, including when its settlement arrives in a later period. Retrying the same submission leaves usage unchanged. Incoming funds and administrative credits do not consume the budget.
+
+For example, an owner gives a purchasing agent and an inventory agent separate spending credentials for one wallet. The account has a 520-sat daily ceiling. A 500-sat payment with a 4-sat fee ceiling reserves 504 sats, leaving 16 sats available under the policy. A 20-sat request from the other agent exceeds the ceiling. Revoking the first credential stops new requests and keeps the in-flight reservation. If the first payment settles with zero fees, the second agent can spend the remaining 20 sats. Both payments also require sufficient wallet funds. The owner can fund the wallet with a deposit or an explicit transfer. Changing a spending limit never creates a deposit. Only the owner issues wallet credentials. Agents sharing an account receive their credentials independently and cannot grant access to another agent.
+
+Set **Per agent in a rolling hour** to limit each delegated wallet credential independently. For example, a 10-sat limit lets a credential spend 6 sats and then 4 sats. Further positive payments must wait until an earlier charge falls outside the preceding 60 minutes or a reservation releases funds. A second credential has its own hourly allowance. Direct owner payments still use the account-wide limits. To configure the same control through the spending-policy API, send `agent_hourly_msat` as a decimal string alongside the account limits you want to retain.
+
+Disabling the budget lets new payments proceed without enforcement. Re-enabling it retains previously charged usage in the current periods. Payments admitted while it was disabled are outside that budget. Roll out the enforcing server version to every instance that can submit a payment before enabling a production policy.
+
+## Compare agent activity
+
+In **Admin → Accounts**, open the account and inspect **Agent spending activity**. The view refreshes every 30 seconds while visible. Compare the last 60 minutes with the preceding 60 minutes for each credential that had an admission in either window. Amounts include fees and outstanding reservations. Failed or released reservations can reduce the amount while the original admission still contributes to the payment count.
+
+To flag unusual spending, set **Hourly warning per agent** in the account spending limits. For example, with a 500-sat warning, a credential at exactly 500 sats has no flag. One more millisatoshi shows **Above hourly warning threshold** beside its current-hour total. Payments continue under the usual limits. The flag clears when charges fall back to the threshold or below, including when a reservation is released or a payment ages out of the hour.
+
+The spending-policy API accepts `agent_hourly_warning_msat` as a decimal string. Use `"500000"` for the example above, or `"0"` to flag any positive charge. You can use a warning on its own. Include the warning when replacing the policy to retain it. Each credential in the activity response has an `above_hourly_warning` boolean.
+
+For the same data, use account read permission with `GET /v1/accounts/{account_id}/agent-spending-activity`. The response includes the UTC observation time, wallet and credential IDs, and separate payment counts and exact decimal millisatoshi amounts for both hours. The ending instant belongs to the window and its starting instant belongs to the preceding window. The page defaults to 25 credentials. To continue, pass `next_after` as `after`. You can request between 1 and 100 credentials with `limit`. Each call observes the current time.
+
+Revoking a credential preserves its historical activity under the original ID. Owner payments and submissions outside an enabled spending policy are excluded. A review request first appears in spending activity when the payment is admitted.
+
+## Review larger delegated payments
+
+Set **Require approval above** in the account spending limits, or include `approval_above_msat` in the spending-policy PUT. The API accepts a decimal string in millisatoshis. The threshold compares the principal plus the maximum fee. A charge exactly equal to the threshold proceeds under the usual limits. Zero requires review for every positive delegated payment. Include the threshold when replacing the policy to retain it.
+
+If review is required, the submission returns HTTP 409 with `code: "payment_approval_required"` and a `Location` header pointing to the operator’s review resource. At this stage, the payment has reserved zero funds. The original agent should retain the request body and its idempotency key.
+
+In **Admin → Accounts**, open the paying account and select **Review payment** under **Payment approvals**. Compare the original request, resolved destination, wallet credential, principal, maximum fee, and total exposure. Choose **Approve retry** or **Reject**. The queue refreshes while the account is open.
+
+1. Read `GET /v1/accounts/{account_id}/payment-approvals` with account read permission. Inspect the original input, resolved payment hash or Bitcoin address, wallet, credential, amount, and maximum fee.
+2. Use account write permission to send `PUT /v1/accounts/{account_id}/payment-approvals/{id}` with `{"decision":"approve"}` or `{"decision":"reject"}`. An approval authorizes one retry from the same credential. The operator's decision, identity and timestamp are available at the same URL.
+3. Retry the original payment submission. The wallet uses the reviewed invoice or Bitcoin destination, checks the credential, invoice expiry, balance and current spending rules, and admits the payment once. A revoked credential or rejected request cannot spend. A tighter budget may block the retry while the approval is still valid.
+
+A review lasts up to 24 hours and ends sooner if the credential or a BOLT11 invoice expires. BOLT12 invoice expiry is checked again on admission. Core Lightning also expires an offer’s outstanding invoices when its issuer disables the offer. A subsequent provider failure releases the reservation. Each account can have up to 100 outstanding reviews, including approved requests awaiting retry. New request IDs start independent submissions. A wallet owner can still submit directly under the account limits.
+
+## Connect over Streamable HTTP
+
+For an MCP client on another machine, run a dedicated wallet connection bound to loopback. Set `SWISSKNIFE_MCP_WALLET_KEY` on the SwissKnife MCP host and generate an independent 32-byte secret with `openssl rand -hex 32` for `SWISSKNIFE_MCP_HTTP_TOKEN`.
+
+```sh
+swissknife mcp --server https://wallet.example.com \
+  --wallet 89b4741a-62d3-4849-a848-79396f2ad427 \
+  --http-listen 127.0.0.1:8452
+```
+
+Use a private tunnel to the loopback listener, or terminate HTTPS at a reverse proxy and pass `--public-origin https://mcp.example.com` to the same command. Forward the exact `/mcp` path and the public Host, preserve `Authorization`, and disable buffering for event streams. The client configures a Streamable HTTP endpoint and sends `Authorization: Bearer <transport-token>` on each request. Store the token in the client's secrets configuration.
+
+The transport token grants access to this single wallet connection. Its tools use the wallet credential on the server, so revocation, expiry, payment approvals required by the client, and account spending limits continue to apply. For independent accounts or distinct permissions, configure separate endpoints and secrets. Rotate the transport token by restarting the MCP process. The default invocation continues to serve stdio.
+
+### Connect Claude Code or OpenClaw
+
+With the wallet bridge listening on port 8452, provide `SWISSKNIFE_MCP_HTTP_TOKEN` in the host's private environment. For Claude Code, add your SwissKnife checkout as a local marketplace and install the plugin.
+
+```shell
+claude plugin marketplace add /absolute/path/to/swissknife
+claude plugin install swissknife-wallet@numeraire
+claude mcp list
+```
+
+For OpenClaw 2026.11.10, configure the endpoint in the operator-managed profile. This version resolves environment references there. Its Claude-bundle importer passes the header placeholder through literally.
+
+```shell
+openclaw mcp set swissknife-wallet '{"transport":"streamable-http","url":"http://127.0.0.1:8452/mcp","headers":{"Authorization":"Bearer ${SWISSKNIFE_MCP_HTTP_TOKEN}"}}'
+openclaw mcp probe swissknife-wallet
+```
+
+For a billing account and a purchasing account, run two wallet bridges with different ports, delegated keys and transport tokens. Give them distinct host connection names such as `billing-wallet` and `purchasing-wallet`. Select that connection when calling a tool. Each connection retains the permissions and account budget of its wallet.
+
+## Access an L402 merchant
+
+Pass the merchant's original HTTP 402 `WWW-Authenticate` header to `decode_l402_challenge`. Review the signed invoice, payee, expiry and exact amount. Use the regular `send_payment` tool with the approved principal, maximum fee and a stable idempotency UUID. Check the submission until it settles.
+
+Call `create_l402_authorization` with the original challenge and the settled wallet payment UUID. It verifies the payment hash and preimage and returns a private bearer credential. Send that header only to the merchant endpoint that issued the challenge. A wallet key with read permission can retrieve a settled payment's proof. The authorization tool returns the header to the caller. Present a cached header to the issuing merchant when you want to use the paid resource. Only the issuer can confirm that a pass still grants access. A request to a metered resource can consume one of its remaining uses.
+
+### Check a cached pass
+
+Configure the bridge with the exact resource URL, for example `--l402-resource https://merchant.example/l402/report`. Repeat the flag for each trusted resource. Call `check_l402_token` with that URL as `resource_url` and the cached header as `authorization`. The bridge checks the preimage locally and sends a restricted macaroon to the merchant's status endpoint. The check leaves the allowance available for a later download.
+
+For a request pack, an active result includes `remaining_requests`. For a time pass, the count is `null`. An exhausted pack has zero uses. An inactive pass has expired or its terms changed. An invalid proof fails verification. An unconfigured merchant, an unavailable issuer or an issuer without this SwissKnife endpoint returns `unknown`. Another buyer sharing the pass can use a request after the check.
+
+## Export spending reports
+
+An operator with account-read permission can request `GET /v1/accounts/{account_id}/spending-report` for JSON or `/v1/accounts/{account_id}/spending-report.csv` for CSV. Reports include payments admitted while a budget was active. A pending payment contributes its reserved amount including its maximum fee. A settled payment contributes its actual debit, and a released reservation contributes zero.
+
+The default interval is the last 30 UTC dates. Supply inclusive calendar dates using `from` and `through` for up to 366 days, and set `interval=week` to group them by weeks beginning on Monday. Only dates inside the selected range contribute to a partial week. Filters accept `wallet_id` and `agent_key_id`. The credential ID survives revocation. Older records can recover the original wallet when its payment still exists. Their original credential is unknown. CSV and JSON report exact integer `charged_msat` values.
+
+In the admin dashboard, open the account and scroll to **Spending report**. Choose day or week, select a wallet, or enter the credential UUID to inspect a single agent. **Download CSV** and **Download JSON** export the groups currently displayed, with the original integer millisatoshi amounts.
+
+## Restrict delegated spending hours
+
+An operator can use `PUT /v1/accounts/{account_id}/agent-spending-hours` to restrict when wallet credentials may start a new payment. This rule works independently of amount budgets. The following example allows Monday through Friday, 09:00 through 16:59 UTC.
+
+```json
+{"weekdays":[1,2,3,4,5],"start_minute":540,"end_minute":1020}
+```
+
+Weekdays run from Monday (1) through Sunday (7). Minutes use UTC. An earlier end crosses midnight, with the selected weekday indicating the start of the shift. For example, a Friday shift from 22:00 to 02:00 includes early Saturday morning. A start of 0 and end of 1440 allow the entire selected day.
+
+Outside these hours a delegated payment returns HTTP 422 before funds are reserved. Previously admitted payments can settle and the original request can be replayed to inspect its result. Account-owner and operator payment authority continues to use the regular account budget. Read the rule with `GET`; remove it with `DELETE` on the same URL. Reads require account-read permission and changes require account-write permission.

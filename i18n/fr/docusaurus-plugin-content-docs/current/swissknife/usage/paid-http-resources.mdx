@@ -1,0 +1,114 @@
+---
+title: Vendre l’accès à une ressource HTTP
+image: /img/social.png
+---
+
+:::note Fonctionnalité en évaluation
+Le [suivi de la passerelle prépayée](https://github.com/bitcoin-numeraire/swissknife/issues/213) indique les versions à essayer pour les forfaits, la tarification et les routes gérées par le titulaire du portefeuille.
+:::
+
+SwissKnife peut facturer en bitcoins l’accès à un rapport, à un fichier ou à une réponse d’API. Le prix peut être fixe ou fourni par le marchand pour chaque nouvelle facture. Les recettes sont créditées sur un portefeuille en BTC natifs du réseau utilisé par le serveur. L’acheteur doit pouvoir récupérer la préimage de son paiement Lightning.
+
+## Configurer une ressource {#configure-a-resource}
+
+Générez une clé racine aléatoire de 32 octets avec `openssl rand -hex 32`. Enregistrez ses 64 caractères hexadécimaux dans le gestionnaire de secrets du déploiement et fournissez-les au serveur via `SWISSKNIFE_L402__ROOT_KEY`. Toutes les répliques qui servent la route doivent utiliser la même clé. Sa rotation invalide les titres d’accès déjà émis.
+
+Dans la configuration de SwissKnife, ajoutez une route avec l’UUID du portefeuille qui encaisse les paiements et l’URL fixe de la ressource accessible depuis le serveur.
+
+```toml
+[l402.routes.report]
+wallet_id = "89b4741a-62d3-4849-a848-79396f2ad427"
+target = "https://reports.example.com/daily.json"
+price_sats = 42
+access_seconds = 600
+challenges_per_minute = 30
+```
+
+Exposez la route publique en HTTPS. Si la ressource est payante, restreignez aussi l’accès direct au serveur d’origine. La route accepte les requêtes GET. SwissKnife adresse une nouvelle requête à l’URL configurée, sans y joindre les cookies, les paramètres de requête ni les identifiants de l’acheteur. Une réponse réussie est servie en téléchargement. La taille maximale de la réponse est de 2 Mio et le délai d’attente du serveur d’origine de 10 secondes.
+
+## Fixer le prix de chaque nouvelle facture {#quote-a-price-for-each-new-invoice}
+
+Si le prix varie, renseignez le service de tarification et le plafond applicable à cette route.
+
+```toml
+quote_url = "https://pricing.example.com/reports/daily"
+price_sats = 60
+```
+
+Lorsqu’une nouvelle facture est nécessaire, SwissKnife envoie un GET à l’URL exacte du service de tarification. Celui-ci renvoie un objet JSON, par exemple `{"price_msat":21345}` pour 21,345 sats. Le montant doit être un entier compris entre 1 millisatoshi et le plafond configuré. La requête utilise le chemin et les paramètres définis par l’exploitant. Les en-têtes et paramètres de l’acheteur restent privés.
+
+L’acheteur paie le montant de la facture Lightning signée. Les factures déjà émises conservent leur prix et les titres d’accès valides restent utilisables si le service de tarification tombe en panne. SwissKnife renvoie HTTP 503 lors d’une nouvelle demande si le prix dépasse le plafond, si le service redirige la requête, si sa réponse dépasse 1 Kio ou si elle prend plus de trois secondes. Un devis en échec compte dans la limite de demandes de la route. Changer l’URL de tarification ou le plafond modifie les conditions signées. Attendez l’expiration des titres en circulation avant de modifier ces paramètres si vous souhaitez les honorer jusqu’à leur terme.
+
+## Acheter et réutiliser un accès {#buy-and-reuse-access}
+
+1. Appelez `GET /l402/report`. La réponse HTTP 402 fournit dans `WWW-Authenticate` un macaroon L402 et une facture BOLT11.
+2. Vérifiez le prix et le réseau de la facture. Payez-la et gardez sa préimage de 32 octets confidentielle. La facture expire après la moitié de la durée d’accès ou après 120 secondes, selon la première échéance.
+3. Répétez le GET avec `Authorization: L402 <macaroon>:<hex-preimage>`. Cet identifiant au porteur donne accès à la ressource jusqu’à l’échéance fixée lors de l’émission de la demande de paiement. En cas d’échec auprès du serveur d’origine, SwissKnife renvoie HTTP 502. Réessayez avec le même identifiant s’il est toujours valide.
+
+HTTP 401 indique que SwissKnife n’a pas pu authentifier la preuve de paiement. Vérifiez que le macaroon et la préimage correspondent à la même facture payée. Un titre authentique mais expiré, épuisé ou émis sous d’anciennes conditions entraîne une nouvelle demande HTTP 402. Vérifiez le prix de la nouvelle facture avant de la payer.
+
+Dans cet exemple, 42 sats donnent accès aux téléchargements pendant dix minutes à compter de l’émission de la demande de paiement. Changer de portefeuille bénéficiaire, d’URL source, de nom de route, de prix ou de durée d’accès exige de nouveaux titres. Par défaut, une réplique peut émettre 30 nouvelles factures par minute et par route. Atteindre cette limite laisse utilisables les titres déjà payés. Le marchand retrouve la facture et son règlement dans l’historique du portefeuille.
+
+## Vendre une requête ou un forfait {#sell-individual-requests-or-a-pack}
+
+Ajoutez `requests_per_payment = 1` pour vendre une seule réponse réussie. Une valeur entière supérieure donne droit à plusieurs réponses. Par exemple, avec `requests_per_payment = 10`, l’acheteur obtient jusqu’à dix téléchargements pour 42 sats dans les dix minutes suivant l’émission de la demande de paiement. La facture signée indique le nombre de requêtes. En omettant ce paramètre, vous conservez la validité des titres à durée limitée déjà émis pour cette route.
+
+Si la réponse du serveur d’origine échoue ou dépasse la taille maximale, le nombre de requêtes restantes est conservé. SwissKnife met la réponse en mémoire, décompte une utilisation en base, puis transmet la réponse à l’acheteur. Une coupure après le décompte peut donc consommer une utilisation. Les répliques partagent le même compteur en base, qui survit aux redémarrages. Utilisez une ressource GET sans effet de bord. Lors de requêtes simultanées pour la dernière utilisation, plusieurs lectures peuvent atteindre le serveur d’origine, mais un seul client reçoit la réponse payée.
+
+Lorsque le forfait est épuisé, le serveur propose une nouvelle facture dans la limite du quota d’émission. Modifier la taille du forfait change les conditions signées. Coordonnez la modification entre les répliques et laissez expirer les titres précédents si vous souhaitez que les clients puissent terminer leurs téléchargements.
+
+## Vendre un téléchargement en plusieurs parties {#sell-a-download-in-segments}
+
+Pour un fichier de plus de 2 Mio, découpez-le à la source en fichiers indépendants. Attribuez à chaque partie une URL stable, une route SwissKnife et un prix. L’index public d’un jeu de données peut ainsi proposer deux parties.
+
+| Requête de l’acheteur | Fichier configuré à la source | Prix |
+| --- | --- | --- |
+| `GET /l402/dataset-part-1` | `https://reports.example.com/dataset/part-1.csv` | 5 sats pour un téléchargement |
+| `GET /l402/dataset-part-2` | `https://reports.example.com/dataset/part-2.csv` | 5 sats pour un téléchargement |
+
+Configurez chaque route avec `price_sats = 5`, `requests_per_payment = 1` et le portefeuille bénéficiaire. Chaque réponse doit respecter la limite de 2 Mio et le délai de 10 secondes. L’acheteur choisit une partie, paie la facture et enregistre le fichier. Il peut revenir plus tard pour acheter la suivante. Chaque titre est lié à la route qui l’a émis.
+
+Pour vendre des appels répétés à une même ressource, configurez un forfait. Avec `requests_per_payment = 100`, un paiement couvre jusqu’à 100 requêtes GET réussies sur la même route pendant la durée d’accès. Chaque fichier sélectionnable doit avoir sa propre route puisque l’URL source est fixe.
+
+## Consulter les recettes {#review-merchant-revenue}
+
+Depuis la page des factures du portefeuille, ouvrez les outils marchands puis les recettes. Choisissez les dates UTC de début et de fin. Pour chaque route, le tableau indique le nombre de factures réglées, le montant brut encaissé et les frais entrants. Le réglage de confidentialité des soldes masque les montants affichés.
+
+Appelez `GET /v1/me/wallets/{wallet_id}/l402/revenue` avec les identifiants du propriétaire ou une clé de portefeuille disposant de `read`. Le rapport regroupe les factures réglées et conservées selon la route qui les a émises. Chaque ligne contient la route, le nombre de factures réglées, le montant reçu et les frais entrants enregistrés. Les montants sont des chaînes décimales en millisatoshis. La recette est enregistrée au règlement de la facture, même si l’acheteur n’a pas encore utilisé son accès. Réutiliser un titre n’ajoute aucune recette.
+
+La période par défaut couvre les 30 derniers jours civils UTC, aujourd’hui inclus. Fournissez des dates inclusives comme `?from=2026-11-01&through=2026-11-30` pour une période maximale de 366 jours. La mise à niveau peut rattacher à leur route les anciens forfaits qui ont enregistré une utilisation. Les anciennes factures sans route enregistrée sont absentes du rapport. Supprimer une facture réglée la retire du rapport.
+
+## Permettre au titulaire d’un portefeuille de publier une route {#let-a-wallet-owner-publish-a-route}
+
+L’exploitant attribue une ressource à un portefeuille dans `l402.origins`. La clé racine est le même secret que pour les routes fixes. Chaque entrée définit une URL source complète, le portefeuille bénéficiaire, un prix plafond et une durée d’accès.
+
+```toml
+[l402.origins.daily-data]
+wallet_id = "89b4741a-62d3-4849-a848-79396f2ad427"
+target = "https://reports.example.com/daily.json"
+price_sats = 50
+access_seconds = 600
+requests_per_payment = 3
+```
+
+Dans les outils marchands de la page des factures, ouvrez les routes payantes et créez une route. Entrez son nom public, sélectionnez la ressource et renseignez le prix en millisatoshis. Pour une tarification dynamique, ce montant est le plafond par facture. Publiez la route et copiez son URL publique. Pour modifier le prix ou suspendre les nouvelles ventes, ouvrez la route existante.
+
+Le titulaire consulte les ressources attribuées et ses routes publiées via `GET /v1/me/wallets/{wallet_id}/l402/routes`. La réponse fournit les noms des ressources et leurs conditions. Les URL de la source et du service de tarification restent sur le serveur. Le nom public comporte de 1 à 57 lettres minuscules, chiffres ou traits d’union. Envoyez les conditions à `PUT /v1/me/wallets/{wallet_id}/l402/routes/{name}`.
+
+```json
+{ "origin": "daily-data", "price_msat": "21500", "enabled": true }
+```
+
+Dans cet exemple, `GET /l402/w/{wallet_id}/{name}` coûte 21,5 sats. Le service de tarification facultatif peut proposer un prix inférieur. Le prix choisi par le titulaire doit respecter le plafond de la ressource. Sur une réplique, les noms publics d’une même ressource se partagent son quota de nouvelles factures.
+
+Utilisez le même PUT pour changer le prix ou définir `enabled` sur `false`. Une route suspendue renvoie HTTP 404 aux nouveaux acheteurs. Les factures émises conservent leur prix et les titres valides restent utilisables pendant la suspension. Un nom de route reste lié à sa ressource initiale. Publiez une autre ressource sous un nouveau nom. Deux portefeuilles peuvent employer le même nom et encaisser séparément. Le rapport de recettes identifie ces ventes par `wallet/{name}`.
+
+Supprimer l’attribution d’une ressource ou modifier ses conditions d’accès peut invalider les titres en circulation. Coordonnez ces changements entre les répliques et laissez expirer les titres existants avant de remplacer la ressource.
+
+## Vérifier un titre sans consommer de requête {#inspect-a-pass-without-using-it}
+
+Les routes fixes et celles publiées par les titulaires acceptent `HEAD <resource-url>/status`. La passerelle MCP fournit l’outil `check_l402_token`. Pour un autre client, vérifiez d’abord que la préimage a pour empreinte le hachage du paiement enregistré dans l’identifiant du macaroon. Ajoutez la restriction de première partie `purpose=status` à une copie du macaroon. Sérialisez cette copie au format v2 et transmettez-la dans l’en-tête `SwissKnife-L402-Inspection`. Le titre initial et la préimage restent sur l’appareil de l’acheteur.
+
+Lisez `SwissKnife-L402-Status`. Avec HTTP 200, `active` indique que les conditions signées sont valides, `exhausted` que le forfait est épuisé, et `inactive` que le titre a expiré ou que les conditions ont changé. Pour un forfait actif ou épuisé, `SwissKnife-L402-Remaining` contient le nombre entier d’utilisations restantes. Un titre à durée limitée omet cet en-tête. HTTP 401 avec `invalid` signale une preuve refusée. Si la route manque, redirige la requête, renvoie une réponse inconnue ou subit une erreur réseau, l’état reste inconnu.
+
+La vérification lit le compteur sans réserver d’utilisation ni contacter la ressource protégée. Traitez aussi l’expiration ou l’épuisement lors du GET payant.

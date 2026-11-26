@@ -1,0 +1,114 @@
+---
+title: Sell access to an HTTP resource
+image: /img/social.png
+---
+
+:::note Feature preview
+The [prepaid gateway tracker](https://github.com/bitcoin-numeraire/swissknife/issues/213) links the review builds for request packs, merchant pricing and wallet-managed routes.
+:::
+
+SwissKnife can charge a fixed or merchant-quoted Lightning price for access to a report, file or API response. The merchant receives the funds in a native Bitcoin wallet on the server's network. A buyer needs a Lightning payer that can return the invoice preimage.
+
+## Configure a resource
+
+Provide a 32-byte random root key as 64 hexadecimal characters in the server secret `SWISSKNIFE_L402__ROOT_KEY`. Generate it with `openssl rand -hex 32` and store it in the deployment's secret manager. All replicas serving the route need the same key. Rotating it invalidates outstanding passes.
+
+Add the route to the deployment's SwissKnife configuration. Use the UUID of the receiving wallet and a fixed upstream resource accessible from the SwissKnife server.
+
+```toml
+[l402.routes.report]
+wallet_id = "89b4741a-62d3-4849-a848-79396f2ad427"
+target = "https://reports.example.com/daily.json"
+price_sats = 42
+access_seconds = 600
+challenges_per_minute = 30
+```
+
+Use HTTPS on the public endpoint. Restrict direct access to the upstream if the resource should only be available to paying clients. Each public route accepts GET. SwissKnife leaves the operator-configured upstream URL intact and sends a fresh request without buyer cookies, query parameters or credentials. Successful responses are served as downloads, with a 2 MiB limit and a 10-second upstream timeout.
+
+## Quote a price for each new invoice
+
+If a report's price changes during the day, add a quote URL to its route and set the highest price you will charge.
+
+```toml
+quote_url = "https://pricing.example.com/reports/daily"
+price_sats = 60
+```
+
+SwissKnife sends a GET to that exact URL when a buyer needs a new invoice. The service returns JSON such as `{"price_msat":21345}` for 21.345 sats. Use an integer from one millisatoshi up to the configured ceiling. The callback receives the operator-configured path and query. Buyer headers and query parameters stay private.
+
+The buyer pays the amount in the signed Lightning invoice. An outstanding invoice keeps its original quote, and buyers can reuse a valid paid pass during a quote-service outage. New challenges return HTTP 503 if the quote exceeds the ceiling, the service redirects, its response exceeds 1 KiB, or the request takes longer than three seconds. Failed quote attempts count toward the route's challenge limit. Changing the callback URL or the ceiling changes the route's signed terms, so allow existing passes to expire before switching either setting.
+
+## Buy and reuse access
+
+1. Request `GET /l402/report`. HTTP 402 returns a `WWW-Authenticate` header containing an L402 macaroon and a BOLT11 invoice.
+2. Check the invoice price and network. Pay it and keep its 32-byte preimage private. The invoice expires after half the access period or 120 seconds, whichever comes first.
+3. Repeat the GET with `Authorization: L402 <macaroon>:<hex-preimage>`. This bearer credential grants access until the expiry set when the challenge was issued. A failed upstream request returns HTTP 502. Retry with the same credential while it is valid.
+
+HTTP 401 means the server could not authenticate the supplied payment proof. Check that the macaroon and preimage belong to the same paid invoice before retrying. An authentic pass that has expired, exhausted its allowance, or belongs to earlier route terms receives a fresh HTTP 402 challenge. Review the new invoice price before paying again.
+
+The example costs 42 sats once and admits repeat downloads for ten minutes from challenge issuance. If you change the receiving wallet, upstream URL, route name, price or access duration, buyers need new passes. The server limits new invoices to 30 per minute per route per replica by default. Existing paid passes continue working when issuance is limited. The merchant can track the invoice and its settlement through normal wallet history.
+
+## Sell individual requests or a pack
+
+Add `requests_per_payment = 1` to the route for a single successful response, or set a larger positive integer for a pack. For example, `requests_per_payment = 10` with the configuration above buys up to ten successful downloads for 42 sats within ten minutes of challenge issuance. The signed Lightning invoice describes the request count. Omitting this setting keeps time passes already issued for that route valid.
+
+A failed or oversized upstream response leaves the allowance available. SwissKnife buffers the bounded response, records one use in its database, then sends the response to the buyer. A disconnection after recording a use can still count. Replicas sharing the database enforce a single allowance and preserve it across server restarts. Use a side-effect-free GET upstream. Simultaneous callers can fetch the same resource while competing for the last use, and only the winning request receives the resource.
+
+After exhaustion the client receives a new payment challenge, subject to the route's invoice issuance limit. Changing the pack size changes the signed terms and requires a new pass. Coordinate changes across replicas and allow existing passes to expire before replacing the configuration if previous buyers should receive their remaining downloads.
+
+## Sell a download in segments
+
+For a file larger than 2 MiB, split it into independently downloadable files at the origin. Give each segment a stable URL, a public SwissKnife route and its own price. For example, a publisher can list two parts of a dataset in a public index:
+
+| Buyer requests | Configured upstream file | Offer |
+| --- | --- | --- |
+| `GET /l402/dataset-part-1` | `https://reports.example.com/dataset/part-1.csv` | 5 sats for one download |
+| `GET /l402/dataset-part-2` | `https://reports.example.com/dataset/part-2.csv` | 5 sats for one download |
+
+Configure each route with `price_sats = 5`, `requests_per_payment = 1` and the receiving wallet. Keep each response within the 2 MiB limit and the ten-second upstream timeout. The buyer chooses a part, pays its challenge and saves the returned file. They can come back later to buy the other part. Each pass belongs to the route that issued it.
+
+For repeated calls to one resource, configure a request pack on that route instead. For example, `requests_per_payment = 100` buys up to 100 successful GETs of the same endpoint during the access period. Publish a separate route for each selectable file because the gateway uses a fixed upstream URL.
+
+## Review merchant revenue
+
+In the dashboard, open **Wallet → Invoices → Merchant tools → Merchant revenue**. Choose the first and last UTC date to see settled invoices, gross receipts and incoming fees for each route. The wallet’s balance-privacy setting masks the displayed amounts.
+
+Use the wallet owner's account credential or a wallet credential with read access to request `GET /v1/me/wallets/{wallet_id}/l402/revenue`. The report groups retained, settled invoices by the merchant route that issued them. Each row contains the route, the settled invoice count, the amount received and the recorded incoming fees. Amounts are decimal strings in millisatoshis. Revenue is recorded at settlement even if the buyer has yet to use the pass. Redeeming the same pass again does not add revenue.
+
+The default period is the past 30 UTC calendar days including today. Supply inclusive dates such as `?from=2026-11-01&through=2026-11-30` for a period of up to 366 days. Previous request packs with a recorded use can be attributed during upgrade. Older invoices without a recorded route are omitted. Deleting a settled invoice removes it from this report.
+
+## Let a wallet owner publish a route
+
+Assign a resource to a wallet by adding an entry under `l402.origins` in the server configuration. The root key is the same deployment secret used for fixed routes. Each origin names one complete upstream URL, receiving wallet, price ceiling and access period.
+
+```toml
+[l402.origins.daily-data]
+wallet_id = "89b4741a-62d3-4849-a848-79396f2ad427"
+target = "https://reports.example.com/daily.json"
+price_sats = 50
+access_seconds = 600
+requests_per_payment = 3
+```
+
+In the dashboard, open **Wallet → Invoices → Merchant tools → Paid routes**. Choose **New route**, enter a public name, select the resource, and enter a price in millisatoshis. For a resource with dynamic quotes, the amount is the maximum per invoice. Publish the route and copy its public URL. Select an existing route to change the price or switch off **Accept new sales**.
+
+The wallet owner reads their assigned resources and published routes with `GET /v1/me/wallets/{wallet_id}/l402/routes`. The response contains origin names and terms. Upstream and pricing URLs stay on the server. Choose a route name of 1–57 lowercase letters, digits or hyphens. Send its terms to `PUT /v1/me/wallets/{wallet_id}/l402/routes/{name}`.
+
+```json
+{ "origin": "daily-data", "price_msat": "21500", "enabled": true }
+```
+
+This publishes `GET /l402/w/{wallet_id}/{name}` for 21.5 sats. An optional operator-configured quote service can offer a lower price for each invoice. The price chosen by the wallet must fit within the origin ceiling. The origin’s new-invoice allowance is shared by its published names on each replica.
+
+Use the same PUT to change the price or set `enabled` to `false`. A paused route returns HTTP 404 to new buyers. Already issued invoices keep their quoted price, and buyers can redeem valid passes while sales are paused. A route name stays bound to its first origin. Create another name to sell a different resource. Independent wallets can use the same name and receive separate payments. These sales appear in the wallet’s revenue report as `wallet/{name}`.
+
+Removing the operator’s origin assignment or changing its resource or access terms can invalidate existing passes. Coordinate operator changes across replicas and allow current passes to expire before replacing their resource.
+
+## Inspect a pass without using it
+
+SwissKnife merchants support `HEAD <resource-url>/status` on both operator-configured and wallet-published routes. The wallet MCP bridge handles the request with its `check_l402_token` tool. For another client, verify that the payment preimage hashes to the payment hash in the macaroon identifier. Append the first-party caveat `purpose=status` to a copy of the macaroon, serialize it in v2 format and send it in the `SwissKnife-L402-Inspection` header. Keep the original credential and the preimage on the buyer's device.
+
+Read `SwissKnife-L402-Status` from the response. On HTTP 200, `active` means the signed terms apply, `exhausted` means the pack has zero uses, and `inactive` means the pass expired or the terms changed. Active packs and exhausted packs also return an integer `SwissKnife-L402-Remaining`. Time passes omit the count. HTTP 401 with `invalid` indicates a rejected inspection proof. Treat a missing endpoint, a redirect, a network error or an unrecognized response as unknown.
+
+Inspection reads the current count. It neither reserves a request nor contacts the protected resource. Clients should still handle expiry or exhaustion when they make the paid GET.

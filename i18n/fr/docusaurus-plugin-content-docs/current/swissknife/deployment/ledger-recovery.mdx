@@ -1,0 +1,73 @@
+---
+title: Sauvegarder et restaurer le registre
+sidebar_position: 5
+---
+
+:::note Fonctionnalité en évaluation
+Utilisez une version d’essai qui intègre la [proposition de restauration du registre](https://github.com/bitcoin-numeraire/swissknife/pull/456).
+:::
+
+La base de données SwissKnife conserve les comptes propriétaires, les soldes des portefeuilles, les réservations et l’historique des paiements. Créez des sauvegardes chiffrées depuis un poste d’exploitation de confiance. Conservez la clé de déchiffrement dans un lieu de récupération distinct et répétez la procédure de restauration après un changement de base de données ou de déploiement.
+
+Utilisez `scripts/ledger-backup.py` fourni avec la version de SwissKnife en service. Il nécessite Python 3.9 ou ultérieur et `age`. Pour PostgreSQL, installez aussi `pg_dump`, `pg_restore` et `createdb` dans des versions compatibles avec les serveurs source et cible. Placez le répertoire de travail sur un disque local privé et chiffré, suffisamment grand pour contenir la copie de la base et l’archive déchiffrée. L’outil indique le moteur, l’heure de début, la version du format et la somme de contrôle de la sauvegarde.
+
+## Créer une sauvegarde {#create-a-snapshot}
+
+Sur la machine de récupération, générez une identité age et conservez-la en lieu sûr. Transmettez à la machine de sauvegarde uniquement le destinataire public affiché par `age-keygen -y operator-key.txt`. Affectez cette valeur à `AGE_RECIPIENT`. Plusieurs arguments `--recipient` permettent à plusieurs identités de restaurer la sauvegarde indépendamment.
+
+```sh
+age-keygen -o operator-key.txt
+age-keygen -y operator-key.txt
+```
+
+Avec SQLite, indiquez le fichier de base de données qu’utilise SwissKnife et conservez son journal WAL actif dans le même répertoire. L’API de sauvegarde en ligne capture les transactions validées. Le fichier chiffré de destination devient disponible une fois la copie et le chiffrement terminés.
+
+```sh
+python3 scripts/ledger-backup.py backup --sqlite /data/swissknife.db \
+  --work-dir /private-staging --recipient "$AGE_RECIPIENT" --output ledger.sqlite.age
+```
+
+Avec PostgreSQL, utilisez l’hôte, la base et les paramètres TLS de l’installation à sauvegarder, ainsi qu’un rôle capable de lire tout son contenu. Fournissez à libpq une définition de service ou les variables `PGHOST`, `PGPORT` et `PGUSER` avec un `PGPASSFILE` protégé. L’outil crée une sauvegarde cohérente au format personnalisé de PostgreSQL.
+
+```sh
+python3 scripts/ledger-backup.py backup --postgres swissknife \
+  --work-dir /private-staging --recipient "$AGE_RECIPIENT" --output ledger.postgres.age
+```
+
+Transférez le fichier chiffré vers votre espace de sauvegarde. Consignez l’heure de début et la version de SwissKnife. Conservez séparément la configuration du service, le secret de signature JWT ou la configuration du fournisseur d’identité, et les identifiants du fournisseur Lightning. Pour les canaux et la phrase de récupération du nœud, suivez la procédure propre à votre fournisseur. La restauration du registre SwissKnife seule ne restaure pas le nœud Lightning.
+
+## Effectuer un exercice de restauration {#rehearse-recovery}
+
+Utilisez une machine ou une instance de base distincte avec l’exécution des paiements sortants déconnectée. Pour SQLite, choisissez un nom de fichier inutilisé dans un répertoire privé. Pour PostgreSQL, choisissez un nouveau nom de base et un rôle doté du privilège `CREATEDB`. L’outil vérifie le déchiffrement et le manifeste chiffré avant d’installer les données. Il refuse d’écraser une destination existante.
+
+```sh
+python3 scripts/ledger-backup.py restore --sqlite /recovery/swissknife.db \
+  --work-dir /private-staging --identity operator-key.txt --input ledger.sqlite.age
+
+python3 scripts/ledger-backup.py restore --postgres swissknife_recovery \
+  --work-dir /private-staging --identity operator-key.txt --input ledger.postgres.age
+```
+
+La restauration PostgreSQL s’effectue dans une seule transaction. En cas d’échec après la création de la base, inspectez celle-ci avant de la supprimer. Rétablissez son propriétaire et les droits de l’application avant de démarrer SwissKnife.
+
+Utilisez le binaire et le répertoire de configuration de la version sauvegardée. Faites pointer `SWISSKNIFE_DATABASE__URL` vers la base restaurée. Pour SQLite, une URL en lecture seule peut désigner directement le fichier restauré. Pour PostgreSQL, utilisez un rôle qui peut lire l’historique des migrations restauré.
+
+```sh
+SWISSKNIFE_DATABASE__URL='sqlite:///recovery/swissknife.db?mode=ro' swissknife check-ledger-migrations
+```
+
+La commande réussit si l’historique correspond à la liste des migrations du binaire et si toutes ont été appliquées. Elle consulte la base sans appliquer de migrations ni contacter un nœud Lightning. Si une migration manque ou est inconnue, vérifiez la version du binaire et de la sauvegarde. Pour tester une mise à niveau, travaillez ensuite sur une copie séparée de la base vérifiée.
+
+Comparez les identifiants des portefeuilles, des comptes propriétaires et des actifs, les montants disponibles et réservés ainsi que l’état de paiements connus avec votre relevé de contrôle. Exécutez ces requêtes en lecture seule avant de raccorder un service à la base restaurée.
+
+```sql
+SELECT version FROM seaql_migrations ORDER BY version;
+SELECT id, account_id, asset_id, available_amount, reserved_amount FROM wallet ORDER BY id;
+SELECT status, count(*) FROM payment GROUP BY status;
+```
+
+SQLite stocke ces UUID sur 16 octets. Dans la console SQLite, sélectionnez `hex(id)`, `hex(account_id)` et `hex(asset_id)` pour les afficher en hexadécimal. Pour les comparer aux UUID de l’API, retirez les tirets et ignorez la casse. PostgreSQL affiche les UUID avec leurs tirets.
+
+Lors d’un incident réel, désignez un seul service autorisé à écrire. Rapprochez les opérations du fournisseur postérieures à la sauvegarde avec le registre restauré à partir des hachages de paiement et des identifiants de transaction. Avant de reprendre les envois, examinez les paiements en attente, les réservations de fonds et les entrées de transaction réservées par le fournisseur. Un paiement peut avoir été réglé après la sauvegarde. Vérifiez son issue avant tout nouvel envoi. Consignez la limite temporelle des données récupérées et la première transaction vérifiée après restauration.
+
+Pour les garanties de cohérence et le format de chiffrement, consultez les documentations de la [sauvegarde SQLite en ligne](https://www.sqlite.org/backup.html), des [sauvegardes logiques PostgreSQL](https://www.postgresql.org/docs/current/backup-dump.html) et d’[age](https://age-encryption.org/).
