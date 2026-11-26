@@ -123,10 +123,15 @@ and optionally enter an order reference. The customer can scan one QR code for
 Lightning or on-chain Bitcoin when both methods are available. Checkout shows
 the method if only one provider operation succeeds.
 
-A detected on-chain payment can appear before it confirms when the provider
-reports mempool deposits. Checkout counts a payment toward the sale after it
-settles. Multiple deposits to the sale address can cover one order. The cashier
-can open the payment details or start the next sale.
+Checkout waits for its receipt lookups before displaying a payment request. When
+the provider detects an unconfirmed deposit, the cashier sees the pending amount
+and the QR stays hidden until confirmation. If the confirmed total falls short,
+checkout shows an on-chain QR for the remaining whole sats at the same address.
+For example, after 10,000 sats confirm on a 25,000-sat sale, the next QR asks
+for 15,000 sats. The customer can scan or copy it until the request expires.
+
+Once the confirmed total covers the sale, open the payment details or start the
+next sale. Each confirmed receipt remains linked from checkout.
 
 The current sale survives a reload in the same browser tab when session storage
 is available. Sound and vibration are optional on each device. A request is shown
