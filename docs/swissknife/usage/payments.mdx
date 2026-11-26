@@ -208,8 +208,12 @@ prompt clients to refresh that resource. A lost submission response can be recov
 by repeating the original POST. Changing its payload under the same key returns
 `409 Conflict`. Deleting a terminal payment leaves its key unavailable for reuse.
 
-A restart picks up unclaimed commands. After dispatch, SwissKnife reconciles by payment
-hash. A crash between the durable claim and the node call can leave a payment in
+A restart picks up unclaimed commands. Once a Lightning payment has been dispatched,
+SwissKnife checks the original hash with the provider even when no new event arrives.
+Background checks run 30 seconds after the preceding pass finishes. A pending or missing
+provider record keeps the reservation in place. Confirmed failure releases it, and
+confirmed settlement charges the actual amount and fee. Poll the original status URL
+to see that result. A crash between the durable claim and the node call can leave a payment in
 `processing` without a matching node record. Ask the operator to reconcile the hash
 and the reservation before authorizing another attempt.
 
