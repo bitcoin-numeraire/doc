@@ -58,6 +58,7 @@ const sidebars: SidebarsConfig = {
         id: "swissknife/deployment/index",
       },
       items: [
+        "swissknife/deployment/ledger-recovery",
         "swissknife/deployment/docker",
         "swissknife/deployment/kubernetes",
         "swissknife/deployment/source",
