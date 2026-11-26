@@ -123,6 +123,12 @@ and optionally enter an order reference. The customer can scan one QR code for
 Lightning or on-chain Bitcoin when both methods are available. Checkout shows
 the method if only one provider operation succeeds.
 
+Use the order reference to match receipts to a sale in wallet activity. For
+example, enter `Order 2047` and each payment to that checkout's dedicated
+Bitcoin address will carry `Order 2047` as its invoice description. This
+includes split payments and deposits that arrive after the cashier starts the
+next sale. The Lightning invoice carries the same description.
+
 Checkout waits for its receipt lookups before displaying a payment request. When
 the provider detects an unconfirmed deposit, the cashier sees the pending amount
 and the QR stays hidden until confirmation. If the confirmed total falls short,
