@@ -66,6 +66,8 @@ SELECT id, account_id, asset_id, available_amount, reserved_amount FROM wallet O
 SELECT status, count(*) FROM payment GROUP BY status;
 ```
 
+SQLite stocke ces UUID sur 16 octets. Dans la console SQLite, sélectionnez `hex(id)`, `hex(account_id)` et `hex(asset_id)` pour les afficher en hexadécimal. Pour les comparer aux UUID de l’API, retirez les tirets et ignorez la casse. PostgreSQL affiche les UUID avec leurs tirets.
+
 Lors d’un incident réel, désignez un seul service autorisé à écrire. Rapprochez les opérations du fournisseur postérieures à la sauvegarde avec le registre restauré à partir des hachages de paiement et des identifiants de transaction. Avant de reprendre les envois, examinez les paiements en attente, les réservations de fonds et les entrées de transaction réservées par le fournisseur. Un paiement peut avoir été réglé après la sauvegarde. Vérifiez son issue avant tout nouvel envoi. Consignez la limite temporelle des données récupérées et la première transaction vérifiée après restauration.
 
 Pour les garanties de cohérence et le format de chiffrement, consultez les documentations de la [sauvegarde SQLite en ligne](https://www.sqlite.org/backup.html), des [sauvegardes logiques PostgreSQL](https://www.postgresql.org/docs/current/backup-dump.html) et d’[age](https://age-encryption.org/).

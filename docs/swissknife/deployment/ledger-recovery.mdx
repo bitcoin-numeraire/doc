@@ -66,6 +66,8 @@ SELECT id, account_id, asset_id, available_amount, reserved_amount FROM wallet O
 SELECT status, count(*) FROM payment GROUP BY status;
 ```
 
+SQLite stores these UUIDs as 16-byte values. In the SQLite shell, select `hex(id)`, `hex(account_id)` and `hex(asset_id)` for a readable list. To compare them with API UUIDs, remove the hyphens and ignore letter case. PostgreSQL displays UUIDs with hyphens.
+
 For a real incident, establish one authoritative writer. Reconcile provider activity since the snapshot with the recovered ledger using payment hashes and transaction IDs. Review pending payments, provider input leases and reservations before re-enabling outbound payments. A payment may have settled at the provider after the snapshot. Reconcile its outcome before any resend. Record the recovered cutoff and the first verified post-restore transaction.
 
 The underlying tools document their snapshot guarantees and encryption format. [SQLite online backup](https://www.sqlite.org/backup.html), [PostgreSQL logical backups](https://www.postgresql.org/docs/current/backup-dump.html), [age](https://age-encryption.org/).
