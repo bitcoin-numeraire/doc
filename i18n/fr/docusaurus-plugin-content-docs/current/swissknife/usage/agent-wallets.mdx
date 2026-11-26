@@ -1,0 +1,235 @@
+---
+title: Connecter un portefeuille à un agent
+image: /img/social.png
+---
+
+:::note Fonctionnalité en évaluation
+Ces fonctionnalités sont en cours d’évaluation. Pour trouver la version à essayer, consultez le [suivi de la passerelle MCP](https://github.com/bitcoin-numeraire/swissknife/issues/214) et le [suivi des contrôles de dépenses](https://github.com/bitcoin-numeraire/swissknife/issues/215).
+:::
+
+Lorsqu’un outil a besoin d’un seul portefeuille, son titulaire peut émettre une clé dédiée. Il choisit les opérations autorisées et la date d’expiration de la clé. Une clé API ordinaire donne accès à l’ensemble du compte.
+
+## Accorder l’accès à un portefeuille {#grant-wallet-access}
+
+Connectez-vous en tant que titulaire et envoyez un `POST` à `/v1/me/wallets/{wallet_id}/agent-keys`. Fournissez un nom, une échéance future au format RFC 3339 dans les 365 prochains jours et au moins une permission.
+
+```json
+{
+  "name": "Billing assistant",
+  "expires_at": "2026-12-15T12:00:00Z",
+  "capabilities": { "read": true, "receive": true, "spend": false }
+}
+```
+
+Adaptez la date à votre installation. La réponse contient l’identifiant de la clé et un secret préfixé par `swka_`, affiché une seule fois. Conservez-le dans les secrets de l’outil. Un `GET` à la même URL liste les clés. Pour en révoquer une, appelez `DELETE /v1/me/wallets/{wallet_id}/agent-keys/{key_id}`.
+
+Sur les routes compatibles, le client transmet le secret dans l’en-tête `Wallet-Key`. La permission `read` donne accès aux informations du portefeuille, soldes, contacts, factures, paiements, devis et états des demandes d’envoi. La permission `receive` autorise l’émission de factures. La permission `spend` permet de soumettre un paiement dont l’exécution pourra être suivie après la requête initiale. Chaque appel vérifie le portefeuille, la permission, la validité et la révocation de la clé.
+
+### Enregistrer des contacts {#save-wallet-contacts}
+
+Accordez `manage_contacts` à une clé pour ajouter, renommer ou supprimer des entrées du carnet d’adresses de ce portefeuille. Ajoutez `read` pour en autoriser la lecture. Les clés existantes conservent leurs permissions initiales.
+
+Le titulaire ou un outil autorisé à gérer les contacts peut envoyer ce corps à `POST /v1/me/wallets/{wallet_id}/saved-contacts`.
+
+```json
+{ "ln_address": "billing@example.com", "label": "Supplier billing" }
+```
+
+Enregistrer à nouveau la même adresse modifie son libellé facultatif et conserve la date d’ajout initiale. La comparaison du domaine ignore la casse. Un `GET` sur la collection liste les entrées. Pour en retirer une, appelez `DELETE /v1/me/wallets/{wallet_id}/saved-contacts/{ln_address}`. La route `contacts` liste les adresses Lightning des paiements réglés. Supprimer un contact du carnet conserve cet historique.
+
+Dans un client MCP, `add_contact` enregistre ou renomme un contact. `list_saved_contacts` consulte le carnet. `list_contacts` affiche les contacts issus de l’historique.
+
+## Connecter un client MCP {#connect-an-mcp-host}
+
+Démarrez la commande avec l’origine de l’API et l’UUID du portefeuille. Dans le gestionnaire de secrets du client MCP, fournissez `SWISSKNIFE_MCP_WALLET_KEY` à l’environnement du processus enfant.
+
+```shell
+swissknife mcp --server https://wallet.example.com --wallet 11111111-2222-4333-8444-555555555555
+```
+
+Le client communique avec la commande sur l’entrée et la sortie standard. Utilisez HTTPS pour une instance distante. HTTP sur une adresse de bouclage convient au développement local. Démarrez une commande distincte pour chaque portefeuille.
+
+### Confirmer un paiement entrant {#confirm-an-incoming-invoice}
+
+Conservez l’UUID SwissKnife renvoyé par `create_invoice`. Transmettez-le dans `id` à `get_invoice` sur la même connexion. Émettre une facture exige `receive` et vérifier son règlement exige `read`. Un outil de rapprochement peut recevoir sa propre clé de lecture.
+
+La réponse contient l’état de la facture, le réseau de règlement, les montants demandé et reçu sous forme de chaînes décimales en millisatoshis, ainsi que l’horodatage du règlement lorsqu’il est disponible. Confirmez la réception avec l’état `Settled` et le montant effectivement reçu. Relire le même UUID renvoie l’état courant.
+
+### Encaisser un bon de retrait {#redeem-a-withdrawal-voucher}
+
+Démarrez la passerelle avec `--withdraw-origin https://issuer.example` en indiquant l’origine du service émetteur. Si l’URL de callback utilise une autre origine, ajoutez-la avec un second `--withdraw-origin`. Les outils de retrait sont proposés dès qu’un service est configuré. Le bon autorise un retrait auprès de son émetteur. Gardez-le dans la conversation privée du client MCP.
+
+1. Transmettez le bon encodé à `inspect_lnurl_withdraw`. Vérifiez le service, l’origine du callback et la plage de montants. Un maximum de zéro indique que le service ne met aucun fonds à disposition pour ce bon.
+2. Choisissez le montant exact en millisatoshis. Créez une facture avec `create_invoice` et conservez son UUID avant de l’envoyer au service.
+3. Appelez `lnurl_withdraw` avec le bon, l’`invoice_id` conservé et l’`amount_msat` approuvé. La création de la facture nécessite `receive`. La soumission de cette facture et la lecture de son état nécessitent `read`.
+4. Appelez `get_invoice` avec le même UUID. Un callback `accepted` confirme que le service a reçu la demande. Après `rejected` ou `unknown`, la facture reste disponible pour le rapprochement. Vérifiez son état avant tout nouvel essai.
+
+### Démarrer avec Docker Compose {#run-with-docker-compose}
+
+Le dépôt SwissKnife contient un exemple dans `examples/mcp`. Faites pointer `SWISSKNIFE_IMAGE` vers une version comprenant la commande MCP. Configurez le fournisseur du portefeuille, ses certificats et le secret de signature selon le README de l’exemple. Depuis ce répertoire, lancez `docker compose up -d wallet`. Fournissez `SWISSKNIFE_WALLET_ID` et `SWISSKNIFE_MCP_WALLET_KEY` dans l’environnement privé du client MCP.
+
+Configurez le client pour exécuter cette commande avec le chemin de votre copie du dépôt. Le processus MCP utilise la connexion de bouclage du portefeuille. Seul le conteneur du portefeuille reçoit les identifiants du fournisseur et monte le volume de la base de données.
+
+```shell
+docker compose -f /path/to/examples/mcp/compose.yaml run --rm --no-deps -T mcp
+```
+
+### Démarrer avec un paquet npm local {#run-with-a-local-npm-package}
+
+Si votre client MCP lance ses outils avec `npx`, exécutez `npm pack ./packages/swissknife-mcp` dans le dépôt SwissKnife. Rendez le binaire SwissKnife correspondant accessible sur le `PATH` ou indiquez son chemin absolu dans `SWISSKNIFE_BIN`. Configurez le client pour lancer le paquet en indiquant le chemin complet de l’archive et l’UUID du portefeuille.
+
+```shell
+npx --offline --yes --package /path/to/package.tgz swissknife-mcp --server https://wallet.example.com --wallet 11111111-2222-4333-8444-555555555555
+```
+
+Dans les deux cas, la clé du portefeuille provient de l’environnement du client. Sa révocation met fin à l’accès.
+
+Le client découvre les outils de consultation du solde, du portefeuille et des contacts, d’émission et de décodage de factures, ainsi que de soumission et de suivi des paiements. Il peut lire `wallet://balance` et `wallet://payments/recent`. Utilisez des chaînes décimales pour préserver les montants exacts en millisatoshis, frais compris.
+
+### Suivre les changements du portefeuille {#subscribe-to-wallet-changes}
+
+Une clé disposant de `read` peut s’abonner à l’une ou l’autre ressource. Une notification indique l’URI à relire avec `resources/read` pour obtenir le solde courant ou les vingt paiements sortants les plus récents. Plusieurs changements entre deux lectures peuvent donner lieu à une seule notification.
+
+Avec le protocole `2026-07-28`, ouvrez une requête `subscriptions/listen` sur stdio ou Streamable HTTP. Indiquez les URI souhaitées dans `notifications.resourceSubscriptions`. Chaque ressource acceptée envoie une première notification lorsque l’abonnement est établi. Annulez la requête ou fermez le flux de réponse HTTP pour mettre fin à l’écoute.
+
+Avec `2025-11-25` sur stdio, utilisez `resources/subscribe` et `resources/unsubscribe` avec le paramètre `uri`. Lisez la ressource après l’abonnement pour connaître sa valeur initiale. Les anciens clients HTTP peuvent lire directement les deux ressources.
+
+Tant qu’un abonnement reste ouvert, SwissKnife MCP vérifie la ressource environ toutes les trois secondes avec la clé du portefeuille. Fermer le dernier abonnement arrête ces lectures. En cas d’interruption temporaire du réseau ou du serveur, un abonnement établi réessaie avec des délais croissants jusqu’à 30 secondes. Si la valeur a changé depuis la dernière lecture réussie, le client reçoit une notification au rétablissement. Si la clé a expiré ou a été révoquée, configurez une nouvelle clé disposant de `read` et abonnez-vous de nouveau.
+
+Pour un paiement, faites approuver la destination, le montant principal et les frais maximaux. Conservez l’UUID de soumission et ces conditions avant d’appeler l’outil. Répéter la même soumission avec les mêmes valeurs renvoie la demande initiale. Suivez-la jusqu’au règlement ou à un échec définitif. Une soumission acceptée peut rester en attente. À l’inverse, chaque appel de création de facture en émet une nouvelle.
+
+## Rechercher des paiements sortants {#find-outgoing-payments}
+
+Utilisez `list_payments` avec une clé disposant de `read`. Pour retrouver des paiements Lightning en échec, utilisez les paramètres suivants.
+
+```json
+{ "status": "Failed", "ledger": "Lightning", "limit": 10, "offset": 0 }
+```
+
+Les filtres sont indépendants. Les valeurs d’état sont `Pending`, `Settled` et `Failed`. Le registre accepte `Lightning`, `Internal` ou `Onchain`. SwissKnife filtre les paiements du portefeuille avant la pagination. Les plus récents apparaissent en premier, l’identifiant du paiement départageant les dates de création identiques. Une page contient 20 paiements par défaut, avec un maximum de 100. Pour poursuivre, ajoutez au décalage précédent le nombre de résultats reçus. Les nouveaux paiements ou changements d’état peuvent déplacer une entrée entre deux pages.
+
+Pour suivre l’activité récente sans filtre, abonnez-vous à `wallet://payments/recent`.
+
+## Fixer un budget de compte {#set-an-account-spending-budget}
+
+Ouvrez le compte dans la section d’administration des comptes, puis ses limites de dépenses. Indiquez un plafond par paiement, jour, semaine ou mois en sats, avec jusqu’à trois décimales. Un champ vide laisse la période sans plafond. La valeur zéro bloque les dépenses positives. Tous les portefeuilles d’un compte partagent ses plafonds. Pour un budget indépendant, utilisez un compte distinct.
+
+Le tableau de bord propose trois modèles en sats. Choisissez un modèle, vérifiez les valeurs, ajustez-les et enregistrez les limites. Fermer l’éditeur abandonne les modifications.
+
+| Modèle | Par paiement | Par clé sur une heure glissante | Par jour | Par semaine | Par mois |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Prudent | 10 | 30 | 100 | 500 | 2 000 |
+| Modéré | 50 | 150 | 500 | 2 500 | 10 000 |
+| Généreux | 100 | 300 | 1 000 | 5 000 | 20 000 |
+
+La modification exige l’écriture sur les comptes et la consultation de la consommation exige la lecture. Fournissez une clé de portefeuille à l’agent. Gardez les identifiants de l’exploitant hors de son processus.
+
+L’API `PUT /v1/accounts/{account_id}/spending-policy` accepte des **chaînes décimales en millisatoshis**. Dans cet exemple, un paiement est limité à 100 sats et la journée à 1 000 sats.
+
+```json
+{
+  "per_payment_msat": "100000",
+  "daily_msat": "1000000"
+}
+```
+
+Un `GET` à la même URL renvoie les limites et la consommation. Si la règle est absente ou désactivée, l’API renvoie HTTP 404. Si le paiement dépasse un plafond, elle renvoie HTTP 422 avant l’envoi. La réservation inclut les frais maximaux. Au règlement, le débit réel remplace la réservation. Un échec ou une annulation libère le budget réservé. Si le fournisseur confirme le paiement ultérieurement, SwissKnife enregistre le débit réel.
+
+Les totaux calendaires sont des chaînes décimales exactes en millisatoshis, même lorsque le cumul dépasse le montant maximal d’un seul paiement. Le jour et le mois commencent à minuit UTC, la semaine commence le lundi. Un paiement compte dans les périodes où il a été admis, même s’il est réglé plus tard. Rejouer la même demande conserve les totaux. Les entrées de fonds et crédits administratifs ne consomment pas le budget.
+
+Par exemple, le titulaire fournit deux clés distinctes à un agent d’achat et à un agent d’inventaire pour le même portefeuille. Avec un plafond quotidien de 520 sats, un achat de 500 sats assorti d’un maximum de 4 sats de frais réserve 504 sats. Il reste 16 sats sous le plafond, et une demande de 20 sats du second agent est refusée. Révoquer la première clé bloque de nouvelles demandes et conserve la réservation en cours. Si le paiement est réglé sans frais, le second agent peut dépenser les 20 sats restants. Les deux paiements exigent aussi un solde disponible suffisant. Le titulaire alimente le portefeuille par dépôt ou transfert explicite. Un changement de plafond n’alimente pas le portefeuille. Seul le titulaire émet les clés. Chaque agent reçoit la sienne et ne peut pas déléguer cet accès.
+
+Le plafond par agent sur une heure glissante s’applique indépendamment à chaque clé déléguée. Avec 10 sats, une clé peut par exemple dépenser 6 sats puis 4. Une autre dépense positive doit attendre qu’un débit sorte des 60 dernières minutes ou qu’une réservation soit libérée. Une autre clé conserve son propre plafond horaire. Les paiements directs du titulaire restent soumis aux plafonds du compte. Pour utiliser l’API, fournissez `agent_hourly_msat` sous forme de chaîne décimale avec les autres limites à conserver.
+
+Désactiver le budget permet de nouveaux paiements sans contrôle des plafonds. Le réactiver conserve la consommation déjà imputée aux périodes en cours. Les paiements admis pendant la désactivation restent en dehors de ce budget. Avant d’activer la règle en production, déployez la version qui l’applique sur toutes les instances capables de soumettre un paiement.
+
+## Comparer l’activité des agents {#compare-agent-activity}
+
+Dans l’administration des comptes, ouvrez le compte puis l’activité des dépenses des agents. La vue s’actualise toutes les 30 secondes tant qu’elle est visible. Pour chaque clé ayant eu un paiement admis dans l’une des deux périodes, comparez les 60 dernières minutes aux 60 minutes précédentes. Les montants incluent les frais et les réservations en cours. La libération d’une réservation peut diminuer le montant sans retirer le paiement du décompte des admissions.
+
+Pour signaler une dépense inhabituelle, configurez le seuil d’alerte horaire par agent. Avec un seuil de 500 sats, une consommation de 500 sats exactement ne déclenche aucune alerte. Un millisatoshi de plus signale le dépassement à côté du total de l’heure. Les paiements restent soumis aux règles habituelles. Le signal disparaît lorsque le total revient au seuil ou en dessous, par exemple à la libération d’une réservation ou lorsqu’un paiement sort de la période.
+
+L’API accepte `agent_hourly_warning_msat` sous forme de chaîne. Utilisez `"500000"` pour l’exemple ci-dessus ou `"0"` pour signaler tout débit positif. L’alerte peut être la seule règle. Lors du remplacement de la politique, incluez-la pour la conserver. La réponse d’activité contient le booléen `above_hourly_warning` pour chaque clé.
+
+Une permission de lecture des comptes permet d’appeler `GET /v1/accounts/{account_id}/agent-spending-activity`. La réponse donne l’heure d’observation UTC, les identifiants du portefeuille et de la clé, ainsi que les nombres de paiements et leurs montants exacts pour les deux périodes. La borne de fin appartient à la période, la borne de début à la période précédente. La page contient 25 clés par défaut. Fournissez `next_after` dans `after` pour poursuivre. Le paramètre `limit` accepte de 1 à 100 clés. L’heure d’observation est recalculée à chaque appel.
+
+La révocation conserve l’historique sous l’identifiant initial. La vue exclut les paiements du titulaire et les soumissions en dehors d’une politique active. Un paiement soumis à approbation apparaît après son admission.
+
+## Examiner un paiement délégué important {#review-larger-delegated-payments}
+
+Dans les limites du compte, définissez un seuil d’approbation ou fournissez `approval_above_msat` dans le PUT de la politique. L’API attend une chaîne décimale en millisatoshis. Le seuil porte sur le montant principal augmenté des frais maximaux. Si le total est exactement égal au seuil, les règles ordinaires s’appliquent. Zéro impose un examen de tout paiement délégué positif. Renvoyez le seuil lors du remplacement de la politique pour le conserver.
+
+Si un examen est requis, la soumission renvoie HTTP 409 avec `code: "payment_approval_required"` et un en-tête `Location` vers la ressource d’examen. Aucun fonds n’a encore été réservé. L’agent conserve le corps de la demande et sa clé d’idempotence.
+
+Dans l’administration des comptes, ouvrez le compte payeur et choisissez le paiement dans la liste des demandes à approuver. Comparez la demande initiale, la destination résolue, la clé du portefeuille, le principal, les frais maximaux et le total exposé. Autorisez une nouvelle tentative ou refusez la demande. La liste s’actualise tant que le compte est ouvert.
+
+1. Avec la lecture des comptes, consultez `GET /v1/accounts/{account_id}/payment-approvals`. Examinez la destination saisie, le hachage ou l’adresse Bitcoin résolue, le portefeuille, la clé, le montant et les frais maximaux.
+2. Avec l’écriture sur les comptes, envoyez `PUT /v1/accounts/{account_id}/payment-approvals/{id}` avec `{"decision":"approve"}` ou `{"decision":"reject"}`. L’approbation autorise une tentative avec la même clé. À cette URL, vous pouvez consulter la décision, son auteur et son horodatage.
+3. Rejouez la soumission initiale. SwissKnife utilise la facture ou l’adresse approuvée, vérifie la clé, la validité de la facture, le solde et les règles en vigueur, puis admet le paiement une seule fois. Une clé révoquée ou une demande rejetée ne peut pas payer. Un plafond devenu plus strict peut encore bloquer la tentative.
+
+L’examen reste ouvert au plus 24 heures et prend fin plus tôt si la clé ou la facture BOLT11 expire. La validité d’une facture BOLT12 est revérifiée à l’admission. Core Lightning fait aussi expirer les factures en circulation d’une offre désactivée par l’émetteur. Un échec ultérieur du fournisseur libère la réservation. Un compte peut avoir jusqu’à 100 examens en cours, demandes approuvées en attente d’une nouvelle tentative comprises. Un nouvel identifiant de demande crée une soumission indépendante. Le titulaire conserve son accès direct sous les plafonds du compte.
+
+## Se connecter avec Streamable HTTP {#connect-over-streamable-http}
+
+Pour un client MCP sur une autre machine, lancez une connexion réservée à ce portefeuille à l’écoute sur une adresse de bouclage. Configurez `SWISSKNIFE_MCP_WALLET_KEY` sur la machine qui exécute la passerelle et créez avec `openssl rand -hex 32` un secret indépendant de 32 octets pour `SWISSKNIFE_MCP_HTTP_TOKEN`.
+
+```sh
+swissknife mcp --server https://wallet.example.com \
+  --wallet 89b4741a-62d3-4849-a848-79396f2ad427 \
+  --http-listen 127.0.0.1:8452
+```
+
+Accédez au port local par un tunnel privé ou terminez HTTPS sur un proxy inverse et ajoutez `--public-origin https://mcp.example.com` à la commande. Transmettez le chemin exact `/mcp`, le nom d’hôte public et l’en-tête `Authorization`. Désactivez la mise en mémoire tampon des flux d’événements. Le client configure une connexion Streamable HTTP et envoie `Authorization: Bearer <transport-token>` à chaque requête. Conservez le jeton dans ses secrets.
+
+Le jeton de transport donne accès à une seule connexion de portefeuille. Les outils utilisent la clé de portefeuille conservée sur le serveur. La révocation, l’expiration, les approbations demandées par le client et les limites du compte continuent de s’appliquer. Pour des comptes ou permissions distincts, configurez des connexions et des secrets séparés. Pour changer le jeton de transport, redémarrez le processus MCP. Sans option de transport, la commande utilise stdio.
+
+### Connecter Claude Code ou OpenClaw {#connect-claude-code-or-openclaw}
+
+Avec la passerelle à l’écoute sur le port 8452, fournissez `SWISSKNIFE_MCP_HTTP_TOKEN` dans l’environnement privé du client. Pour Claude Code, ajoutez votre copie du dépôt SwissKnife comme catalogue local, puis installez le module.
+
+```shell
+claude plugin marketplace add /absolute/path/to/swissknife
+claude plugin install swissknife-wallet@numeraire
+claude mcp list
+```
+
+Avec OpenClaw 2026.11.10, configurez la connexion dans le profil géré par l’exploitant. Cette version y résout les références aux variables d’environnement. Son importation de modules Claude transmet littéralement le texte de substitution de l’en-tête.
+
+```shell
+openclaw mcp set swissknife-wallet '{"transport":"streamable-http","url":"http://127.0.0.1:8452/mcp","headers":{"Authorization":"Bearer ${SWISSKNIFE_MCP_HTTP_TOKEN}"}}'
+openclaw mcp probe swissknife-wallet
+```
+
+Pour utiliser un compte de facturation et un compte d’achat, lancez deux passerelles avec des ports, clés déléguées et jetons de transport distincts. Donnez-leur des noms explicites, comme `billing-wallet` et `purchasing-wallet`, et choisissez la connexion lors de l’appel d’un outil. Chacune conserve les permissions et les plafonds de son portefeuille.
+
+## Accéder à une ressource marchande L402 {#access-an-l402-merchant}
+
+Transmettez l’en-tête `WWW-Authenticate` original de la réponse HTTP 402 à `decode_l402_challenge`. Examinez la facture signée, le bénéficiaire, l’échéance et le montant exact. Payez avec `send_payment` en utilisant le principal approuvé, les frais maximaux et un UUID d’idempotence stable. Suivez la soumission jusqu’au règlement.
+
+Appelez `create_l402_authorization` avec la demande de paiement originale et l’UUID du paiement réglé. L’outil vérifie le hachage du paiement et la préimage puis renvoie un identifiant au porteur privé. Transmettez cet en-tête uniquement au service marchand qui a émis la demande. Une clé de portefeuille disposant de `read` peut récupérer la preuve d’un paiement réglé. Présentez un titre en cache au marchand pour utiliser la ressource. Seul l’émetteur peut confirmer sa validité. Un appel à une ressource facturée à la requête peut consommer une utilisation.
+
+### Vérifier un titre en cache {#check-a-cached-pass}
+
+Configurez l’URL exacte de chaque ressource de confiance, par exemple `--l402-resource https://merchant.example/l402/report`, en répétant l’option si nécessaire. Appelez `check_l402_token` avec l’URL dans `resource_url` et l’en-tête conservé dans `authorization`. La passerelle vérifie la préimage localement et envoie un macaroon restreint à la route de vérification du marchand. Le téléchargement pourra encore utiliser le forfait.
+
+Pour un forfait actif, `remaining_requests` donne le nombre d’utilisations restantes. Un titre à durée limitée renvoie `null`. Un forfait épuisé a zéro utilisation. Un titre inactif a expiré ou ses conditions ont changé. Une preuve invalide échoue à la vérification. Un marchand non configuré, un émetteur indisponible ou une route de vérification absente donnent `unknown`. Une autre personne partageant le titre peut en consommer une utilisation après la vérification.
+
+## Exporter un rapport de dépenses {#export-spending-reports}
+
+Avec la permission de lecture sur le compte, appelez `GET /v1/accounts/{account_id}/spending-report` pour le JSON ou `/v1/accounts/{account_id}/spending-report.csv` pour le CSV. Le rapport inclut les paiements admis pendant qu’une politique était active. Un paiement en attente contribue à hauteur de sa réservation, frais maximaux compris. Un paiement réglé contribue à hauteur du débit réel. Une réservation libérée contribue pour zéro.
+
+Par défaut, le rapport couvre les 30 derniers jours UTC. Fournissez des dates inclusives dans `from` et `through` pour une durée maximale de 366 jours. Utilisez `interval=week` pour regrouper par semaines commençant le lundi. Une semaine partielle ne compte que les dates sélectionnées. Les filtres acceptent `wallet_id` et `agent_key_id`. L’identifiant de la clé est conservé après révocation. Pour un ancien enregistrement, le portefeuille initial peut être retrouvé si le paiement existe encore. La clé d’origine reste alors inconnue. Les rapports CSV et JSON fournissent le montant entier exact `charged_msat`.
+
+Dans l’administration, ouvrez le rapport de dépenses du compte. Choisissez un regroupement par jour ou par semaine. Sélectionnez un portefeuille ou saisissez l’UUID d’une clé pour examiner un seul agent. Les téléchargements CSV et JSON contiennent les groupes affichés et les montants entiers d’origine en millisatoshis.
+
+## Définir des horaires de dépense {#restrict-delegated-spending-hours}
+
+Avec `PUT /v1/accounts/{account_id}/agent-spending-hours`, l’exploitant peut restreindre les horaires auxquels les clés de portefeuille commencent de nouveaux paiements. Cette règle fonctionne indépendamment des plafonds de montant. L’exemple autorise les paiements du lundi au vendredi de 09 h 00 à 16 h 59 UTC.
+
+```json
+{"weekdays":[1,2,3,4,5],"start_minute":540,"end_minute":1020}
+```
+
+Les jours sont numérotés du lundi (1) au dimanche (7). Les minutes sont en UTC. Une heure de fin antérieure au début prolonge la plage jusqu’au lendemain. Le jour sélectionné est celui du début. Une plage du vendredi de 22 h à 02 h inclut donc le samedi matin. Les bornes 0 et 1440 couvrent toute la journée choisie.
+
+En dehors de la plage autorisée, le paiement délégué renvoie HTTP 422 avant toute réservation. Les paiements déjà admis peuvent être réglés. Rejouer la soumission initiale permet d’en consulter le résultat. Les paiements du titulaire et de l’exploitant restent soumis au budget ordinaire du compte. Utilisez `GET` pour lire la règle et `DELETE` à la même URL pour la supprimer. La consultation exige la lecture des comptes et la modification exige l’écriture.

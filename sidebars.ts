@@ -62,6 +62,8 @@ const sidebars: SidebarsConfig = {
         "swissknife/deployment/docker",
         "swissknife/deployment/kubernetes",
         "swissknife/deployment/source",
+        "swissknife/deployment/desktop",
+        "swissknife/deployment/ledger-recovery",
       ],
     },
     {
@@ -91,6 +93,8 @@ const sidebars: SidebarsConfig = {
         "swissknife/usage/events",
         "swissknife/usage/accounts",
         "swissknife/usage/api-keys",
+        "swissknife/usage/agent-wallets",
+        "swissknife/usage/paid-http-resources",
       ],
     },
     "swissknife/architecture/index",

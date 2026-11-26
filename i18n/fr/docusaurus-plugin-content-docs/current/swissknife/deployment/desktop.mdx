@@ -1,0 +1,27 @@
+---
+title: Application de bureau
+sidebar_position: 4
+image: /img/social.png
+---
+
+:::note Fonctionnalité en évaluation
+Utilisez une version d’essai qui intègre la [proposition du client de bureau](https://github.com/bitcoin-numeraire/swissknife/pull/570).
+:::
+
+L’application de bureau ouvre le tableau de bord d’une instance SwissKnife existante dans le composant web du système. Le compte, les soldes et l’historique proviennent de cette instance. Le client fonctionne sur macOS, Windows et Linux.
+
+L’écran de connexion adopte la première langue du système qu’il prend en charge. Avant de vous connecter, le menu **Langue** permet de choisir le français, l’anglais, l’allemand, l’espagnol, l’italien ou le portugais. Le choix est mémorisé sur cet ordinateur. Sélectionnez **Langue du système** pour reprendre la langue de l’appareil. Après connexion, la langue du tableau de bord se règle séparément.
+
+1. Ouvrez SwissKnife et saisissez l’URL du tableau de bord. Par défaut, il s’agit du service hébergé par Numeraire. Pour une installation auto-hébergée, indiquez l’origine de votre tableau de bord.
+2. Si l’instance redirige la connexion vers un fournisseur d’identité distinct, développez **Authentification unique** et indiquez l’origine du fournisseur. Celui du service Numeraire est préconfiguré.
+3. Sélectionnez **Ouvrir le portefeuille** et connectez-vous. Fermez la fenêtre du portefeuille pour revenir à la sélection de l’instance.
+
+Une instance distante exige HTTPS. Pour un tableau de bord sur le même ordinateur, une adresse de bouclage en HTTP comme `http://localhost:8080` convient. Indiquez l’origine, avec le port éventuel, sans chemin, paramètres de requête ni fragment.
+
+Pour retrouver les mêmes portefeuilles et le même historique sur un autre appareil, connectez-vous au même compte sur la même instance.
+
+## Télécharger une version à évaluer {#packaging-status}
+
+Les programmes d’installation sont disponibles pour évaluation sur GitHub. Ouvrez le [workflow Desktop packages](https://github.com/bitcoin-numeraire/swissknife/actions/workflows/desktop.yml), choisissez l’exécution réussie correspondant à la proposition que vous examinez, puis ouvrez **Artifacts** sur sa page de synthèse. Téléchargez **SwissKnife-macOS** (Intel et Apple Silicon), **SwissKnife-Windows** (x64) ou **SwissKnife-Linux** (x64). L’archive macOS contient un DMG, celle de Windows un programme d’installation NSIS, et celle de Linux un DEB, une AppImage et leurs sommes SHA-256.
+
+La signature des programmes d’installation et leur diffusion publique sont différées dans [SwissKnife #477](https://github.com/bitcoin-numeraire/swissknife/issues/477). Pour déployer l’instance à laquelle se connecte le client, consultez les guides [Docker](/swissknife/deployment/docker.mdx) et [Kubernetes](/swissknife/deployment/kubernetes.mdx).
