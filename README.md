@@ -36,7 +36,7 @@ This command generates static content into the `build` directory, which can be s
 
 ### Preview alongside the company website
 
-Set `NUMERAIRE_WEBSITE_ORIGIN` when building the docs to send the company and support links to a website preview, for example `http://127.0.0.1:4385`. In the Astro build, set `PUBLIC_DOCS_ORIGIN` to the documentation preview origin. Omit both settings to use the published domains.
+Set `NUMERAIRE_WEBSITE_ORIGIN` when building the docs to point the navigation and homepage support links to a website preview, for example `http://127.0.0.1:4385`. In the Astro build, set `PUBLIC_DOCS_ORIGIN` to the documentation preview origin. Omit both settings to use the published domains.
 
 ## Dependency audit
 
