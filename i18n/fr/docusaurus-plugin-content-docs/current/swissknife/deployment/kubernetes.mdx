@@ -4,13 +4,91 @@ sidebar_position: 2
 image: /img/social.png
 ---
 
-## Installer les charts Helm
+Déployez l’API et le tableau de bord de SwissKnife 0.3.5 dans deux Deployments Kubernetes. Cet exemple utilise des comptes locaux, une base PostgreSQL existante et un nœud Core Lightning dont le service REST est accessible en HTTPS. Le pod de l’API doit pouvoir joindre le nœud et la base de données. Il vous faut `kubectl`, Docker et un moyen de mettre l’image du tableau de bord à la disposition du cluster.
 
-Les [charts de Numeraire](https://github.com/bitcoin-numeraire/k8s-infra) décrivent une infrastructure comprenant un nœud Bitcoin, un nœud Core Lightning, PostgreSQL, le réseau, la supervision et SwissKnife. Vous pouvez adapter ces manifests à votre environnement dans un fork.
+<a id="installer-les-charts-helm" />
 
-- Le chart [`swissknife`](https://github.com/bitcoin-numeraire/k8s-infra/tree/main/charts/swissknife) déploie le serveur Rust avec l’image `bitcoinnumeraire/swissknife-server` sur le port `3000`.
-- Le chart [`dashboard`](https://github.com/bitcoin-numeraire/k8s-infra/tree/main/charts/dashboard) déploie le tableau de bord Next.js avec l’image `bitcoinnumeraire/swissknife-dashboard` sur le port `8080`.
+## Préparer le namespace et les identifiants {#helm-charts}
 
-## Configurer la version déployée
+Sélectionnez le contexte de votre cluster et créez un namespace :
 
-Épinglez des versions compatibles et immuables des deux images, puis renseignez les champs `version` et `appVersion` des charts. La configuration publique du tableau de bord est intégrée à l’image au moment de la compilation. Pour changer l’origine de l’API ou le fournisseur d’identité, suivez le [guide de compilation du tableau de bord](./docker.mdx#configure-the-dashboard-at-build-time).
+```sh
+kubectl create namespace swissknife
+```
+
+Dans un répertoire de travail privé, préparez quatre fichiers. Les valeurs des identifiants doivent tenir sur une seule ligne, sans saut de ligne final.
+
+| Fichier | Contenu |
+| --- | --- |
+| `database-url` | URL de connexion à une base PostgreSQL pour SwissKnife. L’utilisateur doit pouvoir appliquer les migrations de SwissKnife. |
+| `cln-rune` | Rune d’accès au service REST de votre nœud Core Lightning. |
+| `ca.pem` | Certificat de l’autorité qui a signé le certificat HTTPS du nœud. Utilisez un nom d’hôte couvert par le certificat du serveur. |
+| `jwt-secret` | Clé de signature privée partagée par les réplicas. Pour une nouvelle installation, générez-la une seule fois avec la commande ci-dessous. |
+
+```sh
+umask 077
+(set -C; openssl rand -hex 32 | tr -d '\n' > jwt-secret)
+kubectl -n swissknife create secret generic swissknife-credentials \
+  --from-file=database-url --from-file=cln-rune --from-file=ca.pem --from-file=jwt-secret
+```
+
+Pour mettre à niveau une installation existante, réutilisez sa clé privée pour conserver les sessions locales. Sauvegardez la clé avec les identifiants de récupération. Si vous changez la clé et redémarrez l’API, les utilisateurs devront se reconnecter.
+
+## Installer l’API {#install-the-api}
+
+Téléchargez le [manifeste public du serveur](/examples/kubernetes/swissknife-server.yaml) sous le nom `swissknife-server.yaml`. L’image du serveur est identifiée par son empreinte. Renseignez l’URL du nœud et le [domaine de réception](../configuration/index.mdx) de votre installation. L’origine de l’API dans cet exemple permet de tester le tableau de bord depuis votre machine.
+
+```sh
+kubectl -n swissknife create configmap swissknife-instance \
+  --from-literal=SWISSKNIFE_CLN_REST_CONFIG__ENDPOINT=https://cln.example.test:3010 \
+  --from-literal=SWISSKNIFE_HOST=http://127.0.0.1:4300 \
+  --from-literal=SWISSKNIFE_DOMAIN=wallet.example.test
+kubectl -n swissknife apply -f swissknife-server.yaml
+kubectl -n swissknife rollout status deployment/swissknife-server
+```
+
+<a id="configurer-la-version-déployée" />
+
+## Compiler et installer le tableau de bord {#deployment-configuration}
+
+Clonez la version correspondante de SwissKnife et configurez le tableau de bord pour les comptes locaux. L’origine de l’API est l’adresse utilisée par le **navigateur**. Le nom d’un Service Kubernetes est accessible uniquement à l’intérieur du cluster.
+
+```sh
+git clone --depth 1 --branch v0.3.5 https://github.com/bitcoin-numeraire/swissknife.git
+cd swissknife/dashboard
+cat > .env.production <<'ENV'
+NEXT_PUBLIC_AUTH_METHOD=jwt
+NEXT_PUBLIC_SERVER_URL=http://127.0.0.1:4300
+NEXT_PUBLIC_APPNAME=SwissKnife
+ENV
+```
+
+Remplacez `DASHBOARD_IMAGE` par un nouveau tag dans votre registre. Compilez l’image pour l’architecture des nœuds Kubernetes, puis envoyez-la au registre. Pour un registre privé, configurez également les identifiants de téléchargement dans le namespace. Sur un cluster de développement local, vous pouvez charger l’image dans chaque nœud et utiliser le même tag dans le Deployment.
+
+```sh
+DASHBOARD_IMAGE=registry.example.test/swissknife-dashboard:local-0.3.5
+docker build -t "$DASHBOARD_IMAGE" .
+docker push "$DASHBOARD_IMAGE"
+```
+
+Déployez l’image du tableau de bord :
+
+```sh
+kubectl -n swissknife create deployment swissknife-dashboard --image="$DASHBOARD_IMAGE"
+kubectl -n swissknife expose deployment swissknife-dashboard --port=8080
+kubectl -n swissknife rollout status deployment/swissknife-dashboard
+```
+
+## Créer le premier compte propriétaire {#set-up-the-first-owner}
+
+Avant d’ouvrir les services au public, lancez les commandes suivantes dans deux terminaux. Chaque redirection de port écoute sur votre machine.
+
+```sh
+kubectl -n swissknife port-forward service/swissknife-server 4300:3000
+```
+
+```sh
+kubectl -n swissknife port-forward service/swissknife-dashboard 4800:8080
+```
+
+Ouvrez `http://127.0.0.1:4800`, suivez les étapes de bienvenue et créez le premier compte propriétaire. Ouvrez le portefeuille, déconnectez-vous, puis reconnectez-vous pour retrouver votre compte. Pour une installation publique, configurez TLS pour l’API et le tableau de bord, renseignez l’origine publique de l’API dans `SWISSKNIFE_HOST` et recompilez le tableau de bord avec la même origine. Le [guide de compilation du tableau de bord](./docker.mdx#configure-the-dashboard-at-build-time) décrit ces paramètres publics.

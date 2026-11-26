@@ -4,22 +4,87 @@ sidebar_position: 2
 image: /img/social.png
 ---
 
-## Helm charts
+Run the SwissKnife 0.3.5 API and dashboard as separate Kubernetes workloads. This example uses local accounts, an existing PostgreSQL database and a Core Lightning node with its HTTPS REST service enabled. The node and database must be reachable from the API pod. You need `kubectl`, Docker and a way to make a locally built dashboard image available to the cluster.
 
-You can find an example helm charts on our [GitHub repository](https://github.com/bitcoin-numeraire/k8s-infra).
-For maximum flexibility, we recommend you to fork the repository and modify the charts to suit your needs. The repo contains a full infrastructure, including a Bitcoin node,
-a Lightning node (Core Lightning), a Postgres database, monitoring, networking and the SwissKnife application.
+## Prepare the namespace and credentials {#helm-charts}
 
-- The [`dashboard`](https://github.com/bitcoin-numeraire/k8s-infra/tree/main/charts/dashboard) chart is used to deploy the SwissKnife Dashboard NextJS application.
-- The [`swissknife`](https://github.com/bitcoin-numeraire/k8s-infra/tree/main/charts/swissknife) chart is used to deploy the SwissKnife Backend Rust application.
+Select your cluster context and create a namespace:
 
-:::note
-Kubernetes uses the separated images, not the all-in-one bundle:
+```sh
+kubectl create namespace swissknife
+```
 
-- The `swissknife` chart deploys the API-only `bitcoinnumeraire/swissknife-server` image on port `3000`.
-- The `dashboard` chart deploys the standalone `bitcoinnumeraire/swissknife-dashboard` Next.js image on port `8080`.
-  :::
+In a private working directory, prepare four files. Keep credential values on one line without a trailing newline.
 
-## Deployment configuration
+| File | Contents |
+| --- | --- |
+| `database-url` | PostgreSQL connection URL for a SwissKnife database. The database user needs to run SwissKnife's migrations. |
+| `cln-rune` | The REST rune for your Core Lightning node. |
+| `ca.pem` | The CA certificate for the node's HTTPS endpoint. Use a hostname covered by its server certificate. |
+| `jwt-secret` | A private signing key shared by all replicas. For a new installation, generate it once with the command below. |
 
-Use matching immutable backend and dashboard image tags, and set the charts' `version` and `appVersion` for the release. Dashboard public configuration is built into the image; pod environment variables alone do not change browser settings. See [Docker configuration](./docker.mdx#configure-the-dashboard-at-build-time) before building your own dashboard.
+```sh
+umask 077
+(set -C; openssl rand -hex 32 | tr -d '\n' > jwt-secret)
+kubectl -n swissknife create secret generic swissknife-credentials \
+  --from-file=database-url --from-file=cln-rune --from-file=ca.pem --from-file=jwt-secret
+```
+
+For an existing installation, skip key generation and supply its current private signing key to preserve local sessions. Store the key with your recovery credentials. Rotating it and restarting the API signs users out.
+
+## Install the API {#install-the-api}
+
+Save the [public server manifest](/examples/kubernetes/swissknife-server.yaml) as `swissknife-server.yaml`. It pins the released server image by digest. Set the node URL and the [receiving domain](../configuration/index.mdx) for your installation. The API origin below is for the local browser rehearsal.
+
+```sh
+kubectl -n swissknife create configmap swissknife-instance \
+  --from-literal=SWISSKNIFE_CLN_REST_CONFIG__ENDPOINT=https://cln.example.test:3010 \
+  --from-literal=SWISSKNIFE_HOST=http://127.0.0.1:4300 \
+  --from-literal=SWISSKNIFE_DOMAIN=wallet.example.test
+kubectl -n swissknife apply -f swissknife-server.yaml
+kubectl -n swissknife rollout status deployment/swissknife-server
+```
+
+## Build and install the dashboard {#deployment-configuration}
+
+Clone the matching release. In the checkout, set the public dashboard profile for local login. The API origin is the address the **browser** uses. A cluster Service name is only resolvable inside the cluster.
+
+```sh
+git clone --depth 1 --branch v0.3.5 https://github.com/bitcoin-numeraire/swissknife.git
+cd swissknife/dashboard
+cat > .env.production <<'ENV'
+NEXT_PUBLIC_AUTH_METHOD=jwt
+NEXT_PUBLIC_SERVER_URL=http://127.0.0.1:4300
+NEXT_PUBLIC_APPNAME=SwissKnife
+ENV
+```
+
+Set `DASHBOARD_IMAGE` to a new image tag in your registry. Build for the architecture of your Kubernetes nodes and push the image. A private registry also requires pull credentials configured in the namespace. On a local development cluster, you can load the built image into each node and use the same tag in the Deployment.
+
+```sh
+DASHBOARD_IMAGE=registry.example.test/swissknife-dashboard:local-0.3.5
+docker build -t "$DASHBOARD_IMAGE" .
+docker push "$DASHBOARD_IMAGE"
+```
+
+Deploy the dashboard image:
+
+```sh
+kubectl -n swissknife create deployment swissknife-dashboard --image="$DASHBOARD_IMAGE"
+kubectl -n swissknife expose deployment swissknife-dashboard --port=8080
+kubectl -n swissknife rollout status deployment/swissknife-dashboard
+```
+
+## Set up the first owner {#set-up-the-first-owner}
+
+Before exposing either service, run these commands in two terminals. Each port forward listens on your machine.
+
+```sh
+kubectl -n swissknife port-forward service/swissknife-server 4300:3000
+```
+
+```sh
+kubectl -n swissknife port-forward service/swissknife-dashboard 4800:8080
+```
+
+Open `http://127.0.0.1:4800`, follow the welcome screen and create the first owner. Open the wallet, sign out and sign in again to check the saved account. For a public deployment, configure TLS for the API and dashboard, set `SWISSKNIFE_HOST` to the public API origin and rebuild the dashboard with the same origin. The [dashboard build guide](./docker.mdx#configure-the-dashboard-at-build-time) describes the public settings.

@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: swissknife-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: swissknife-server
+  template:
+    metadata:
+      labels:
+        app: swissknife-server
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: server
+          image: bitcoinnumeraire/swissknife-server:0.3.5@sha256:f04fc83049174f16c66b17a9a145249befacaea6a332eb989191468224f21575
+          ports:
+            - name: http
+              containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: swissknife-instance
+          env:
+            - name: SWISSKNIFE_AUTH_PROVIDER
+              value: jwt
+            - name: SWISSKNIFE_LN_PROVIDER
+              value: cln_rest
+            - name: SWISSKNIFE_CLN_REST_CONFIG__CA_CERT_PATH
+              value: /certs/ca.pem
+            - name: SWISSKNIFE_DATABASE__URL
+              valueFrom:
+                secretKeyRef:
+                  name: swissknife-credentials
+                  key: database-url
+            - name: SWISSKNIFE_CLN_REST_CONFIG__RUNE
+              valueFrom:
+                secretKeyRef:
+                  name: swissknife-credentials
+                  key: cln-rune
+            - name: SWISSKNIFE_JWT__SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: swissknife-credentials
+                  key: jwt-secret
+          volumeMounts:
+            - name: node-ca
+              mountPath: /certs
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /v1/system/health
+              port: http
+      volumes:
+        - name: node-ca
+          secret:
+            secretName: swissknife-credentials
+            items:
+              - key: ca.pem
+                path: ca.pem
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: swissknife-server
+spec:
+  selector:
+    app: swissknife-server
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
