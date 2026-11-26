@@ -57,8 +57,6 @@ const config: Config = {
     image: 'img/social.png',
     metadata: [
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:image", content: "/img/social.png" },
-      { property: "og:image", content: "/img/social.png" },
     ],
     colorMode: {
       defaultMode: 'dark',
