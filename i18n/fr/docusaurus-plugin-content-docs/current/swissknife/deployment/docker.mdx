@@ -1,0 +1,41 @@
+---
+title: Docker
+sidebar_position: 1
+image: /img/social.png
+---
+
+Les [images Docker de SwissKnife](https://hub.docker.com/u/bitcoinnumeraire) sont disponibles pour `linux/amd64` et `linux/arm64`.
+
+| Image | Contenu | Port |
+| --- | --- | --- |
+| `bitcoinnumeraire/swissknife:0.3.3` | Serveur et tableau de bord statique | `3000` |
+| `bitcoinnumeraire/swissknife-server:0.3.3` | Serveur seul | `3000` |
+| `bitcoinnumeraire/swissknife-dashboard:0.3.3` | Tableau de bord Next.js autonome | `8080` |
+
+Épinglez la version ou le *digest* de l’image. Les étiquettes `0.3`, `0` et `latest` peuvent changer à chaque publication.
+
+## Préparer la configuration {#configure-before-starting}
+
+Prévoyez une base de données, un nœud LND ou CLN accessible, ses identifiants TLS et un mode d’authentification. Le nœud Lightning s’exécute séparément. Préparez le fichier `swissknife.env` à l’aide du [guide de configuration](/swissknife/configuration/index.mdx) et montez les identifiants du fournisseur aux chemins configurés.
+
+Cet exemple utilise SQLite avec le stockage par défaut et les identifiants du nœud dans `/certs`.
+
+```bash
+mkdir -p storage certs
+docker run --env-file ./swissknife.env \
+  --mount type=bind,src="$PWD/storage",dst=/storage \
+  --mount type=bind,src="$PWD/certs",dst=/certs,readonly \
+  -p 3000:3000 bitcoinnumeraire/swissknife:0.3.3
+```
+
+Avant le démarrage, placez les identifiants dans le répertoire prévu et configurez l’adresse du fournisseur. Pour l’authentification locale, définissez un secret `SWISSKNIFE_JWT__SECRET` robuste. Vous pouvez aussi configurer OAuth2. Avec PostgreSQL, définissez `SWISSKNIFE_DATABASE__URL` et prévoyez un stockage persistant pour la base.
+
+## Configurer le tableau de bord à la compilation {#configure-the-dashboard-at-build-time}
+
+L’image publiée du tableau de bord utilise le profil Auth0 de Numeraire. Si vous utilisez votre propre API ou fournisseur d’identité, modifiez `dashboard/.env.production` avant de [compiler le tableau de bord](./source.mdx). Utilisez `NEXT_PUBLIC_AUTH_METHOD=jwt` pour les comptes locaux ou `auth0` avec les paramètres publics de votre fournisseur Auth0.
+
+Définissez `NEXT_PUBLIC_SERVER_URL` comme l’origine publique de l’API ou laissez-la vide si l’API et le tableau de bord partagent la même origine. Ces valeurs sont intégrées au code JavaScript envoyé au navigateur. Elles doivent être publiques. Si vous les modifiez, reconstruisez l’image.
+
+## Séparer le serveur et le tableau de bord
+
+L’image du serveur seul définit `SWISSKNIFE_DASHBOARD_DIR=""`. Le tableau de bord autonome écoute sur le port `8080` et doit être compilé pour l’URL publique du serveur. Le [déploiement Kubernetes](./kubernetes.mdx) utilise ces deux images.

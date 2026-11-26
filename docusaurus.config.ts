@@ -3,10 +3,12 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 import {themes as prismThemes} from 'prism-react-renderer';
 
-const websiteOrigin = new URL(process.env.NUMERAIRE_WEBSITE_ORIGIN || 'https://numeraire.tech').origin;
+import {websiteHome} from './website';
+
+const website = websiteHome();
 
 const config: Config = {
-  customFields: {websiteOrigin},
+  customFields: {website},
   title: 'Numeraire Docs',
   tagline: 'Numeraire Documentation Portal',
   favicon: 'img/favicon.svg',
@@ -24,7 +26,7 @@ const config: Config = {
   },
   i18n: {
     defaultLocale: 'en',
-    locales: ['en'],
+    locales: ['en', 'fr'],
   },
   presets: [
     [
@@ -32,6 +34,7 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
+          editLocalizedFiles: true,
           editUrl: 'https://github.com/bitcoin-numeraire/doc/edit/main/',
           path: "docs",
           routeBasePath: "/",
@@ -96,17 +99,17 @@ const config: Config = {
           label: "Developers",
         },
         {
-          href: 'https://api.numeraire.tech/docs',
-          position: "right",
-          label: "API Reference",
-        },
-        {
-          href: 'https://app.numeraire.tech',
+          type: 'dropdown',
+          label: 'Resources',
           position: 'right',
-          label: "Dashboard",
+          items: [
+            {label: 'API Reference', href: 'https://api.numeraire.tech/docs'},
+            {label: 'Dashboard', href: 'https://app.numeraire.tech'},
+          ],
         },
+        {type: 'localeDropdown', position: 'right'},
         {
-          href: websiteOrigin,
+          href: website,
           position: 'right',
           label: 'Numeraire.tech',
         },
@@ -120,7 +123,7 @@ const config: Config = {
           items: [
             {
               label: 'Numeraire Homepage',
-              href: websiteOrigin,
+              href: website,
             },
             {
               label: 'Numeraire Dashboard',
@@ -180,6 +183,7 @@ const config: Config = {
       require.resolve("@easyops-cn/docusaurus-search-local"),
       {
         docsRouteBasePath: "/",
+        language: process.env.DOCUSAURUS_CURRENT_LOCALE === 'fr' ? 'fr' : 'en',
         hashed: true,
         indexBlog: false,
       },

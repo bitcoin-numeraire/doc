@@ -45,7 +45,7 @@ RUN apt-get update && \
 ENV FORCE_COLOR=0
 WORKDIR /opt/docusaurus
 COPY --from=prod --chown=node:node /opt/docusaurus/package.json ./package.json
-COPY --from=prod --chown=node:node /opt/docusaurus/docusaurus.config.ts ./docusaurus.config.ts
+COPY --from=prod --chown=node:node /opt/docusaurus/docusaurus.config.ts /opt/docusaurus/website.ts ./
 COPY --from=prod --chown=node:node /opt/docusaurus/node_modules ./node_modules
 COPY --from=prod --chown=node:node /opt/docusaurus/build ./build
 USER node

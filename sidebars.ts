@@ -1,3 +1,4 @@
+import {websiteHome} from './website';
 import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
 
 /**
@@ -20,7 +21,7 @@ const sidebars: SidebarsConfig = {
     {
       type: "link",
       label: "Contact Us",
-      href: "https://numeraire.tech/contact",
+      href: websiteHome() + "/contact",
     },
   ],
   accountSidebar: [
@@ -29,7 +30,7 @@ const sidebars: SidebarsConfig = {
     {
       type: "link",
       label: "Contact Us",
-      href: "https://numeraire.tech/contact",
+      href: websiteHome() + "/contact",
     },
   ],
   developersSidebar: [
@@ -44,7 +45,7 @@ const sidebars: SidebarsConfig = {
     {
       type: "link",
       label: "Contact Us",
-      href: "https://numeraire.tech/contact",
+      href: websiteHome() + "/contact",
     },
   ],
   swissknifeSidebar: [
@@ -102,7 +103,7 @@ const sidebars: SidebarsConfig = {
     {
       type: "link",
       label: "Contact Us",
-      href: "https://numeraire.tech/contact",
+      href: websiteHome() + "/contact",
     },
   ],
 };

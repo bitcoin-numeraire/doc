@@ -1,0 +1,62 @@
+{
+  "home.description": {
+    "message": "Utilisez Numeraire Account, hébergez SwissKnife ou intégrez les paiements Bitcoin à votre application."
+  },
+  "home.heading": {
+    "message": "Documentation Numeraire"
+  },
+  "home.intro": {
+    "message": "Gérez votre portefeuille Bitcoin, exploitez votre instance SwissKnife ou connectez une application à l’API de paiement."
+  },
+  "home.about": {
+    "message": "À propos de Numeraire"
+  },
+  "home.account": {
+    "message": "Créez un compte, recevez un paiement Lightning et gérez vos portefeuilles depuis le tableau de bord hébergé."
+  },
+  "home.swissknife": {
+    "message": "Déployez SwissKnife, connectez votre nœud Bitcoin et Lightning et configurez les comptes de vos utilisateurs."
+  },
+  "home.developersTitle": {
+    "message": "Développeurs"
+  },
+  "home.developers": {
+    "message": "Créez une clé API et intégrez les paiements à votre application avec l’API REST."
+  },
+  "home.guides": {
+    "message": "Guides par produit"
+  },
+  "home.support": {
+    "message": "Contacter l’assistance Numeraire"
+  },
+  "theme.SearchBar.label": {
+    "message": "Rechercher"
+  },
+  "theme.SearchBar.noResultsText": {
+    "message": "Aucun résultat"
+  },
+  "theme.SearchBar.searchInContext": {
+    "message": "Voir tous les résultats dans « {context} »"
+  },
+  "theme.SearchBar.seeAll": {
+    "message": "Voir tous les résultats"
+  },
+  "theme.SearchBar.seeAllOutsideContext": {
+    "message": "Voir tous les résultats hors de « {context} »"
+  },
+  "theme.SearchPage.existingResultsTitle": {
+    "message": "Résultats pour « {query} »"
+  },
+  "theme.SearchPage.emptyResultsTitle": {
+    "message": "Rechercher dans la documentation"
+  },
+  "theme.SearchPage.documentsFound.plurals": {
+    "message": "{count} document trouvé|{count} documents trouvés"
+  },
+  "theme.SearchPage.noResultsText": {
+    "message": "Aucun document trouvé"
+  },
+  "theme.SearchPage.searchContext.everywhere": {
+    "message": "Partout"
+  }
+}
