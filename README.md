@@ -65,3 +65,7 @@ We welcome contributions to improve this documentation. Please see the CONTRIBUT
 ## License
 
 The documentation is licensed under the [Creative Commons Attribution 4.0 International License (CC BY 4.0)](LICENSE).
+
+## Wallet screenshots
+
+The Account and SwissKnife guides share English and French screenshots of SwissKnife v0.3.4. Each language has a desktop and mobile capture under `static/img/article_images/account/`. The balances, transactions and Lightning address belong to a synthetic regtest example.
