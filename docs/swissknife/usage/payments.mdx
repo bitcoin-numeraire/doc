@@ -153,6 +153,11 @@ address when the sale offers both methods. If a receipt check is interrupted,
 return to the wallet and reopen the register in the same tab to resume.
 Reloading the tab retains the links when session storage is available.
 
+If the confirmed receipts exceed the order total, the register shows how many
+extra sats it received. For example, if a 20,000-sat Lightning payment settles
+and another 1,000 sats confirm at the sale address, a 20,000-sat sale shows
+1,000 sats over the order total. Open the receipt links to reconcile the sale.
+
 The current sale survives a reload in the same browser tab when session storage
 is available. Sound and vibration are optional on each device. A request is shown
 for up to 15 minutes. Closing it or letting it expire leaves the Bitcoin address
