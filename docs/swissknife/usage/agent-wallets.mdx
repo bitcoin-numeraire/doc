@@ -70,6 +70,10 @@ Disabling the budget lets new payments proceed without enforcement. Re-enabling 
 
 In **Admin → Accounts**, open the account and inspect **Agent spending activity**. The view refreshes every 30 seconds while visible. Compare the last 60 minutes with the preceding 60 minutes for each credential that had an admission in either window. Amounts include fees and outstanding reservations. Failed or released reservations can reduce the amount while the original admission still contributes to the payment count.
 
+To flag unusual spending, set **Hourly warning per agent** in the account spending limits. For example, with a 500-sat warning, a credential at exactly 500 sats has no flag. One more millisatoshi shows **Above hourly warning threshold** beside its current-hour total. Payments continue under the usual limits. The flag clears when charges fall back to the threshold or below, including when a reservation is released or a payment ages out of the hour.
+
+The spending-policy API accepts `agent_hourly_warning_msat` as a decimal string. Use `"500000"` for the example above, or `"0"` to flag any positive charge. You can use a warning on its own. Include the warning when replacing the policy to retain it. Each credential in the activity response has an `above_hourly_warning` boolean.
+
 For the same data, use account read permission with `GET /v1/accounts/{account_id}/agent-spending-activity`. The response includes the UTC observation time, wallet and credential IDs, and separate payment counts and exact decimal millisatoshi amounts for both hours. The ending instant belongs to the window and its starting instant belongs to the preceding window. The page defaults to 25 credentials. To continue, pass `next_after` as `after`. You can request between 1 and 100 credentials with `limit`. Each call observes the current time.
 
 Revoking a credential preserves its historical activity under the original ID. Owner payments and submissions outside an enabled spending policy are excluded. A review request first appears in spending activity when the payment is admitted.
