@@ -1,147 +1,40 @@
-.mainBackground {
-    background-color: var(--homepage-card-background) !important;
-  }
-  
-  .cardContainer {
-    padding: 0;
-    margin: 20px auto;
-    align-items: center;
-    max-width: 95% !important;
-  }
-  
-  .cardHeader {
-    position: relative;
-    display: flex;
-    align-items: center;
-    padding: 20px;
-  }
-  
-  .cardIcon {
-    color: var(--banner-text);
-    position: absolute;
-    right: 22px;
-    top: 25px;
-    width: 43px;
-    height: auto;
-    transition: width 0.25s ease;
-  }
-  
-  .cardBody {
-    text-align: left;
-    padding-left: 40px;
-    transition: padding-left 0.25s ease;
-  }
-  
-  @media (max-width: 1500px) {
-    .cardBody {
-      padding-left: 30px;
-    }
-  }
-  
-  @media (max-width: 1500px) {
-    .cardIcon {
-      width: 35px;
-    }
-  }
-  
-  .cardTitle h3 {
-    color: var(--banner-text);
-    font-size: 1.55rem;
-    font-weight: 400;
-    padding-right: 60px;
-    padding-top: 10px;
-    margin-bottom: 10px;
-    margin-left: 20px;
-    transition: font-size 0.25s ease, margin-left 0.25s ease;
-  }
-  
-  @media (max-width: 1500px) {
-    .cardTitle h3 {
-      font-size: 1.45rem;
-      font-weight: 500;
-      margin-left: 10px;
-    }
-  }
-  
-  .description {
-    color: var(--banner-text);
-    font-size: 18px;
-    font-weight: 300;
-    margin-top: 0;
-  }
-  
-  @media (max-width: 1500px) {
-    .description {
-      font-size: 16px;
-    }
-  }
-  
-  .heading {
-    text-align: center;
-    padding-top: 10px;
-    font-weight: 400;
-    color: var(--banner-text);
-  }
-  
-  .card_glow {
-    position: relative;
-    background-color: var(--homepage-card-background);
-    color: var(--ifm-color-primary);
-    border-radius: 3px;
-    border: 1px solid var(--homepage-card-border-color);
-    box-shadow: 0 0 10px rgb(97 223 255 / 20%);
-    overflow: visible;
-    transform: scale(1);
-    transition: transform 0.15s ease-in-out, border-color 0.3s ease-in-out;
-    min-height: 280px;
-  }
-  
-  .card_glow:hover {
-    transform: translateY(-10px);
-    border-color: var(--homepage-card-border-color-hover);
-  }
-  
-  .circle {
-    width: 12px;
-    height: 12px;
-    background-color: var(--homepage-card-border-color);
-    border-radius: 50%;
-    position: absolute;
-    top: -6px;
-    right: -6px;
-    transition: background-color 0.3s ease-in-out;
-  }
-  
-  .card_glow:hover .circle {
-    background-color: var(--homepage-card-dot-hover);
-  }
-  
-  .card {
-    color: var(--homepage-card-text);
-  }
-  
-  .button {
-    background-color: #1e1e1e;
-    transition: transform 0.2s ease-in-out, background-color 0.25s ease-in-out,
-      border 0.15s ease-in-out;
-    height: 45px;
-    border-radius: 500px;
-    border: 1px solid var(--ifm-color-primary);
-    overflow: visible;
-    text-align: center;
-    font-weight: 500;
-    font-size: 17px;
-    line-height: 32px;
-    color: #fff;
-  }
-  
-  .button:hover {
-    background-color: #fff;
-    overflow: visible;
-    border: 1px solid var(--homepage-card-icon);
-    color: #1e1e1e;
-  }
-  
-  .icon {
-    color: var(--homepage-card-icon);
-  }
+.guides {
+  max-width: 90rem;
+  margin: 0 auto;
+  padding: 0 clamp(1.25rem, 6vw, 6rem) clamp(2.5rem, 6vw, 5rem);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 0;
+  list-style: none;
+}
+.card {
+  display: block;
+  height: 100%;
+  padding: clamp(1.2rem, 2.6vw, 2.4rem);
+  background: var(--ifm-background-surface-color);
+  color: var(--ifm-font-color-base);
+  border: 1px solid var(--docs-rule);
+  border-radius: 4px;
+}
+.card:hover,
+.card:focus-visible {
+  border-color: var(--ifm-link-color);
+  text-decoration: none;
+}
+.card h2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: .5rem;
+  font-size: clamp(1.2rem, 1.8vw, 1.6rem);
+  font-weight: 600;
+}
+.card span { color: var(--ifm-link-color); }
+.card p { margin: 0; color: var(--docs-muted); }
+.support { display: inline-block; margin-top: 1.2rem; }
+@media (max-width: 760px) {
+  .grid { grid-template-columns: 1fr; }
+}

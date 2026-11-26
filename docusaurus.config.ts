@@ -6,7 +6,7 @@ import {themes as prismThemes} from 'prism-react-renderer';
 const config: Config = {
   title: 'Numeraire Docs',
   tagline: 'Numeraire Documentation Portal',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/favicon.svg',
   url: 'https://docs.numeraire.tech',
   baseUrl: '/',
   organizationName: 'bitcoin-numeraire', 
@@ -29,7 +29,7 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://github.com/bitcoin-numeraire/docs/edit/main/',
+          editUrl: 'https://github.com/bitcoin-numeraire/doc/edit/main/',
           path: "docs",
           routeBasePath: "/",
           include: ["**/*.md", "**/*.mdx"],
@@ -51,14 +51,6 @@ const config: Config = {
     ],
   ],
   themeConfig: {
-    announcementBar: {
-      id: "announcement_bar_v0_3_3",
-      content:
-        '📣 <strong><a href="https://github.com/bitcoin-numeraire/swissknife/releases/tag/v0.3.3" target="blank">Numeraire SwissKnife v0.3.3</a></strong> is out!',
-      backgroundColor: "#F2B81B",
-      textColor: "#121212",
-      isCloseable: true,
-    },
     image: 'img/social.png',
     metadata: [
       { name: "twitter:card", content: "summary_large_image" },
@@ -110,25 +102,12 @@ const config: Config = {
         {
           href: 'https://app.numeraire.tech',
           position: 'right',
-          label: "User Dashboard",
+          label: "Dashboard",
         },
         {
-          href: 'https://github.com/bitcoin-numeraire',
+          href: 'https://numeraire.tech',
           position: 'right',
-          className: 'header-github-link',
-          'aria-label': 'GitHub repository',
-        },
-        {
-          href: "https://twitter.com/NumeraireBTC",
-          className: "header-twitter-link",
-          position: "right",
-          "aria-label": "Twitter",
-        },
-        {
-          href: "https://nostr.com/npub1m8pwckdf3n5lyd2m463ad3u4kk98qmwfs9s7hrmj6knd07frenlsfr0uje",
-          className: "header-nostr-link",
-          position: "right",
-          "aria-label": "Nostr",
+          label: 'Numeraire.tech',
         },
       ],
     },
@@ -177,8 +156,8 @@ const config: Config = {
           title: 'More',
           items: [
             {
-              label: 'Numeraire SwissKnife',
-              href: 'https://github.com/bitcoin-numeraire/swissknife',
+              label: 'SwissKnife releases',
+              href: 'https://github.com/bitcoin-numeraire/swissknife/releases',
             },
             {
               label: 'Contribute to our docs',
