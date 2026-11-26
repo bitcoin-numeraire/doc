@@ -5,14 +5,36 @@ on:
     branches:
       - main
   pull_request:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Full documentation commit SHA to build
+        type: string
+        required: true
+
+permissions:
+  contents: read
 
 jobs:
   lint-and-prettier:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Require a full commit SHA for manual previews
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          REVIEW_COMMIT: ${{ inputs.commit }}
+        run: '[[ "$REVIEW_COMMIT" =~ ^[0-9a-fA-F]{40}$ ]]'
+
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.commit }}
+          persist-credentials: false
+
+      - name: Record the checked-out revision
+        id: revision
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Set up Node.js
         uses: actions/setup-node@v7.1.0
@@ -38,3 +60,12 @@ jobs:
         run: yarn build
         env:
           DOCUSAURUS_SSG_WORKER_THREADS: '2'
+
+      - name: Upload the built documentation
+        if: github.event_name != 'push'
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: numeraire-docs-${{ steps.revision.outputs.sha }}
+          path: build/
+          if-no-files-found: error
+          retention-days: 14
