@@ -46,7 +46,15 @@ python3 scripts/ledger-backup.py restore --postgres swissknife_recovery \
 
 A PostgreSQL restore runs in a single transaction. If restore fails after database creation, inspect the new database before removing it. Reapply the database owner and application grants before starting SwissKnife.
 
-Check the migration history against the source release and compare the wallet IDs, account owners, asset IDs, available units, reserved units and the status of known payments with your recorded recovery evidence. Run these read-only queries on the restored database before attaching a service.
+Use the SwissKnife binary from the backed-up release and its configuration directory. Set `SWISSKNIFE_DATABASE__URL` to the restored database. For SQLite, a read-only URL can name the recovered file directly. For PostgreSQL, use a database role with read access to the restored migration history.
+
+```sh
+SWISSKNIFE_DATABASE__URL='sqlite:///recovery/swissknife.db?mode=ro' swissknife check-ledger-migrations
+```
+
+The command returns success when every recorded migration matches the binary’s migration list and all migrations in that list have been applied. It reads the database without running migrations or connecting to a Lightning provider. If it reports a pending or unknown migration, confirm the backup and release version before proceeding. Perform any planned upgrade on a separate copy after verifying the recovery.
+
+Compare the wallet IDs, account owners, asset IDs, available units, reserved units and the status of known payments with your recorded recovery evidence. Run these read-only queries on the restored database before attaching a service.
 
 ```sql
 SELECT version FROM seaql_migrations ORDER BY version;
