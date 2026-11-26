@@ -1,0 +1,9 @@
+node_modules
+build
+.docusaurus
+.cache-loader
+.yarn/cache
+.yarn/unplugged
+.yarn/install-state.gz
+*.log
+.DS_Store
