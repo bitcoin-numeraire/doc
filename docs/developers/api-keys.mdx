@@ -4,49 +4,40 @@ sidebar_position: 2
 image: /img/social.png
 ---
 
-Integrate all functionalities provided by Numeraire into your applications, with the [Numeraire API](https://api.numeraire.tech/docs) using API Keys.
+Use an account API key to connect a server-side application to SwissKnife. The key can read and operate the wallets owned by its account, including sending payments. The wallet ID in a request selects the wallet for that call. Additional scopes grant administrative access across accounts.
 
-API Keys are used to authenticate requests. They are generated in the [Dashboard](https://app.numeraire.tech) and can be used to access the API endpoints.
-When deploying your own Numeraire SwissKnife, you also have access to the API in the same way by connecting to your own instance.
-With the right permissions, you also access the API on behalf of other accounts as an admin, allowing you to behave as banking infrastructure for your users.
+## Create an account key
 
-## Generate an API token
+1. Sign in to the [Numeraire dashboard’s API Keys page](https://app.numeraire.tech/build/api-keys). In a self-hosted dashboard, open **Build → API Keys**.
+2. Under **Personal access tokens**, select **New**. Give the token a name and choose an expiration.
+3. Leave administrative scopes empty for this guide. Select **Generate token** and copy the secret while the drawer is open. Store it in your server’s secret store.
 
-1. Go to your [Settings](https://app.numeraire.tech/settings?tab=apikeys) on the API Keys tab.
+## List your wallets
 
-<div class="center-container" style={{ marginBottom: 20 }}>
-  <img
-    src="/img/article_images/developers/apikeys_overview.png"
-    alt="Numeraire SwissKnife"
-  />
-</div>
-
-2. Click on the `New` button.
-
-<div class="center-container" style={{ marginBottom: 20 }}>
-  <img
-    src="/img/article_images/developers/apikeys_new.png"
-    alt="Numeraire SwissKnife"
-  />
-</div>
-
-3. Fill in the form and select any additional administrative permissions you want to grant. The key can always use your ownership-scoped `/v1/me` routes; wallet operations require an explicit wallet ID in the request path.
-4. Once the token is generated, copy it and store it in a safe place. You will not be able to see it again!
-
-## Use your API token
-
-Once your API key is generated, you can pass the token in the `Api-Key` header of your requests.
+Make the secret available as `SWISSKNIFE_API_KEY` in your shell. Use the hosted API origin below or substitute the URL of your SwissKnife instance.
 
 ```bash
-curl https://api.numeraire.tech/v1/me/wallets/YOUR_WALLET_ID/payments \
-  -H 'Api-Key: YOUR_API_KEY'
+SWISSKNIFE_URL=https://api.numeraire.tech
+
+curl --fail-with-body --silent --show-error \
+  -H "Api-Key: ${SWISSKNIFE_API_KEY}" \
+  "${SWISSKNIFE_URL}/v1/me/wallets"
 ```
 
-:::tip
-Always send payload data in JSON format using the `Content-Type: application/json` header.
-:::
+The response is a JSON array. Choose the wallet you want and copy its `id`. An empty array means the account has no wallets yet.
 
-## BUIDL
+## Read payments for one wallet
 
-You are now ready to start building with Numeraire! Start integrating into your application, create a Wordpress plugin, register Lightning and Nostr Addresses
-for your users, etc. The possibilities are endless!
+Set `WALLET_ID` to the ID you chose, then request its outgoing payment history.
+
+```bash
+WALLET_ID=YOUR_WALLET_ID
+
+curl --fail-with-body --silent --show-error \
+  -H "Api-Key: ${SWISSKNIFE_API_KEY}" \
+  "${SWISSKNIFE_URL}/v1/me/wallets/${WALLET_ID}/payments"
+```
+
+A wallet with no outgoing payments returns `[]`. For incoming payments, use the [wallet’s invoices](../swissknife/usage/payments.mdx). See the [REST API reference](https://api.numeraire.tech/docs) for the full response types.
+
+When you retire the integration, open the token’s row menu under **Personal access tokens**, choose **Revoke** and confirm. Other tokens for the account remain usable. The [API key reference](../swissknife/usage/api-keys.mdx) lists administrative scopes and the endpoints for managing keys.
