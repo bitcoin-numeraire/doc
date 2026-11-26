@@ -44,6 +44,22 @@ The Yarn resolutions select patched Tinypool and serialize-javascript versions
 outside Docusaurus's dependency ranges, and UUID 11 for SockJS's CommonJS import.
 Remove these overrides when the upstream dependency ranges include the fixes.
 
+## Review a built preview
+
+Open the pull request’s **Lint, Prettier and Build** run and download the `numeraire-docs-<sha>` artifact. Its name identifies the checked-out source. Automatic pull request builds use GitHub’s test merge commit. The artifact is available for 14 days.
+
+For a draft on a separate stack, run the preview workflow from a revision that includes it. Set `REVIEW_COMMIT` to the full commit SHA from the draft you want to review. The command uses the workflow on `main` by default. During review, set `WORKFLOW_REF` to the branch containing the workflow.
+
+```sh
+gh workflow run ci.yml --ref "${WORKFLOW_REF:-main}" -f commit="$REVIEW_COMMIT"
+```
+
+The manual run appears under Actions for the workflow ref. Its artifact name records the documentation commit. After downloading and extracting the artifact, use the documentation checkout with its dependencies installed to serve that directory. Open the local URL printed by Docusaurus. You can follow deep links and reload individual guides.
+
+```sh
+yarn serve --dir /path/to/extracted-preview
+```
+
 ## Deployment
 
 Pushing a `v*` tag triggers the Release workflow, which builds the documentation image for AMD64 and ARM64 and publishes it to the DigitalOcean Container Registry.
