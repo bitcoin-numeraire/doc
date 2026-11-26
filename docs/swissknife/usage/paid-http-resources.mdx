@@ -53,6 +53,19 @@ A failed or oversized upstream response leaves the allowance available. SwissKni
 
 After exhaustion the client receives a new payment challenge, subject to the route's invoice issuance limit. Changing the pack size changes the signed terms and requires a new pass. Coordinate changes across replicas and allow existing passes to expire before replacing the configuration if previous buyers should receive their remaining downloads.
 
+## Sell a download in segments
+
+For a file larger than 2 MiB, split it into independently downloadable files at the origin. Give each segment a stable URL, a public SwissKnife route and its own price. For example, a publisher can list two parts of a dataset in a public index:
+
+| Buyer requests | Configured upstream file | Offer |
+| --- | --- | --- |
+| `GET /l402/dataset-part-1` | `https://reports.example.com/dataset/part-1.csv` | 5 sats for one download |
+| `GET /l402/dataset-part-2` | `https://reports.example.com/dataset/part-2.csv` | 5 sats for one download |
+
+Configure each route with `price_sats = 5`, `requests_per_payment = 1` and the receiving wallet. Keep each response within the 2 MiB limit and the ten-second upstream timeout. The buyer chooses a part, pays its challenge and saves the returned file. They can come back later to buy the other part. Each pass belongs to the route that issued it.
+
+For repeated calls to one resource, configure a request pack on that route instead. For example, `requests_per_payment = 100` buys up to 100 successful GETs of the same endpoint during the access period. Publish a separate route for each selectable file because the gateway uses a fixed upstream URL.
+
 ## Review merchant revenue
 
 In the dashboard, open **Wallet → Invoices → Merchant tools → Merchant revenue**. Choose the first and last UTC date to see settled invoices, gross receipts and incoming fees for each route. The wallet’s balance-privacy setting masks the displayed amounts.
