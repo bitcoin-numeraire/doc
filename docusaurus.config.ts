@@ -6,6 +6,7 @@ import {themes as prismThemes} from 'prism-react-renderer';
 import {websiteHome} from './website';
 
 const website = websiteHome();
+const showLastUpdate = process.env.NUMERAIRE_DOCS_GIT_HISTORY !== 'false';
 
 const config: Config = {
   customFields: {website},
@@ -45,8 +46,8 @@ const config: Config = {
             "**/*.test.{js,jsx,ts,tsx}",
             "**/__tests__/**",
           ],
-          showLastUpdateAuthor: true,
-          showLastUpdateTime: true,
+          showLastUpdateAuthor: showLastUpdate,
+          showLastUpdateTime: showLastUpdate,
           includeCurrentVersion: true,
         },
         blog: false, // Disable blog feature

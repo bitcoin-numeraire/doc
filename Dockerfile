@@ -30,8 +30,9 @@ WORKDIR /opt/docusaurus
 COPY . /opt/docusaurus/
 ## Install dependencies with `--immutable` to ensure reproducibility.
 RUN yarn install --immutable
-## Build the static site.
-RUN yarn build
+## Source archives and linked worktrees can lack readable Git history inside the build.
+RUN if ! git rev-parse --verify HEAD >/dev/null 2>&1; then export NUMERAIRE_DOCS_GIT_HISTORY=false; fi && \
+    yarn build
 
 # Stage 3a: Serve with `docusaurus serve` without shipping the build toolchain.
 FROM node:24.22.3-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS serve
