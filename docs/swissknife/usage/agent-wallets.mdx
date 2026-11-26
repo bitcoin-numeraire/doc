@@ -94,6 +94,18 @@ While clients are subscribed, SwissKnife MCP checks each selected resource about
 
 For a payment, approve the destination, principal and maximum fee. Save the submission UUID with those terms before calling the tool. A retry with the same UUID and terms returns the original submission. Read its status until settlement or a terminal failure. An accepted submission can still be pending. Invoice creation creates another invoice on each call.
 
+## Find outgoing payments
+
+Use `list_payments` with a wallet credential that has read access. To find failed Lightning payments, call the tool with:
+
+```json
+{ "status": "Failed", "ledger": "Lightning", "limit": 10, "offset": 0 }
+```
+
+You can use either filter independently. Status accepts `Pending`, `Settled` or `Failed`. Ledger accepts `Lightning`, `Internal` or `Onchain`. The API filters the selected wallet before applying pagination. It returns the newest matches first, using the payment ID to order records with the same creation time. A page defaults to 20 payments and can contain up to 100. The next page starts at the previous offset plus the number of results returned. New payments or status changes between calls can move a payment between pages.
+
+For the unfiltered recent activity feed, subscribe to `wallet://payments/recent`.
+
 ## Set an account spending budget
 
 Open an account in **Admin → Accounts** and select **Set spending limits**. Enter a per-payment, daily, weekly or monthly limit in sats, with up to three decimal places. A blank field leaves that period unrestricted. Zero blocks positive payments. Use a separate account for each agent that needs an independent budget. All wallets owned by one account draw from the same limits.
