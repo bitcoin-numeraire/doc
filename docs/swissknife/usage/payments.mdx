@@ -129,6 +129,14 @@ Bitcoin address will carry `Order 2047` as its invoice description. This
 includes split payments and deposits that arrive after the cashier starts the
 next sale. The Lightning invoice carries the same description.
 
+A customer using another wallet on the same SwissKnife instance can also pay
+the sale’s Bitcoin address. The cashier sees the amount immediately, with the
+internal transfer listed as a receipt. A split sale can combine this transfer
+with a confirmed on-chain deposit. The cashier’s order reference appears on the
+incoming receipt, and the customer’s outgoing payment keeps their own note.
+Earlier internal receipts without a recorded destination remain in wallet
+activity and cannot be matched to a checkout by address.
+
 Checkout waits for its receipt lookups before displaying a payment request. When
 the provider detects an unconfirmed deposit, the cashier sees the pending amount
 and the QR stays hidden until confirmation. If the confirmed total falls short,
