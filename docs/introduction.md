@@ -35,7 +35,7 @@ Registering an account and sending payments is free. Numeraire does not charge t
 - On-chain Bitcoin wallet (address management, wallet sync and transaction preparation) for self-hosted CLN/LND, distinct from the Lightning wallet
 - Register your own LN and Nostr Addresses (*your_username@your_domain.com*)
 - Connect to Core Lightning (CLN) and LND, each via gRPC and REST
-- Runs on your desktop, Raspberry Pi (Umbrel, Raspiblitz, ...) or on a server in the cloud.
+- Deploy on your own server with Docker or Kubernetes. The [deployment guide](swissknife/deployment/index.mdx) also covers desktop access and the Umbrel preview.
 - Everything the Numeraire Dashboard has to offer, as the dashboard is essentially the Numeraire SwissKnife ran as a service.
 
 Discover how to use and deploy a Numeraire SwissKnife [here](swissknife/index.mdx).
