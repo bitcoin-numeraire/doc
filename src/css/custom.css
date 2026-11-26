@@ -199,6 +199,7 @@ html[data-theme='dark'] {
 .navbar {
   border-bottom: 1px solid var(--docs-rule);
 }
+.navbar__brand { flex-shrink: 0; }
 .navbar__logo {
   height: 1.8rem;
 }
@@ -223,6 +224,12 @@ html[data-theme='dark'] {
     }
   }
   
+@media (min-width: 997px) and (max-width: 1199px) {
+  .navbar__link { padding-inline: .35rem; }
+  .navbar__link svg { display: none; }
+  .navbar__search input { width: 130px; }
+}
+
   /* Algolia Search Styling */
   
   .DocSearch-Logo {
