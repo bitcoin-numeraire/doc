@@ -8,7 +8,7 @@ image: /img/social.png
 
 ## Our Products
 
-Currently, Numeraire proposes different products and services for individuals and companies willing to integrate Bitcoin in a simple and flexible way, either custodially for ease of use, or self-custodially for maximum control, privacy and sovereignty.
+With Numeraire Account, Numeraire operates SwissKnife and the payment node for you. When you host SwissKnife with your own node, you administer the wallets and manage the node’s recovery material. Applications can connect to either deployment through the REST API.
 
 ### Numeraire Account
 
