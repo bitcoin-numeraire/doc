@@ -209,15 +209,17 @@ The on-chain wallet requires a self-hosted Core Lightning or LND provider and th
 
 Open **Activity** for the selected wallet, choose **Export statement**, enter the first and last
 UTC dates to include, and download the CSV. Administrators with transaction-read permission
-can export from an individual wallet's detail page. The download covers all activity created
-during those dates, including transactions on later pages of the activity table.
+can export from an individual wallet's detail page. Choose **Creation date** to see all activity opened during the period, including pending or failed entries. Choose **Payment date (settled only)** when reconciling receipts and expenses for the period. For example, an invoice created on March 30 and paid on April 1 appears in the March creation-date statement and the April payment-date statement. Both downloads include entries beyond the first page of wallet activity.
+
+Payment-date statements use the recorded payment time for each settled entry, including settled internal transfers and operator credits. Entries without a recorded payment time stay out of this export. Rows are ordered by the selected timestamp, then transaction ID and direction. The CSV retains both timestamps and its existing amount and fee columns.
 
 The account API accepts an inclusive `from` and exclusive `until` timestamp. For example,
-to include all of March, pass midnight on March 1 and midnight on April 1.
+to include all of March, pass midnight on March 1 and midnight on April 1. Omit `date_basis` or pass `created` for the original creation-date behavior. To download settled activity by payment time, pass `date_basis=paid`.
 
 ```bash
 curl --fail --get "https://your-instance/v1/me/wallets/$WALLET_ID/statement" \
   -H "Authorization: Bearer $TOKEN" \
+  --data-urlencode "date_basis=paid" \
   --data-urlencode "from=2025-03-01T00:00:00Z" \
   --data-urlencode "until=2025-04-01T00:00:00Z" \
   --output wallet-march.csv
