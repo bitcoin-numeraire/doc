@@ -6,6 +6,8 @@ image: /img/social.png
 
 The desktop client connects to a running SwissKnife dashboard. Your account, wallet balances and transaction history come from that instance. The client uses the system webview on macOS, Windows and Linux.
 
+The connection screen follows your first supported system language. Use **Language** to choose English, French, German, Spanish, Italian or Portuguese before signing in. The choice stays on this computer. Choose **System language** to follow the device again. You can set the dashboard language separately after sign-in.
+
 1. Open SwissKnife and enter the dashboard URL. The default connects to the Numeraire hosted dashboard. Use your own dashboard origin for a self-hosted installation.
 2. If your instance redirects to a separate identity provider, expand **Single sign-on** and enter the provider origin. The hosted Numeraire provider is preconfigured.
 3. Choose **Open wallet** and sign in. Close the wallet window to return to the instance selector.
@@ -16,4 +18,4 @@ On another device, connect to the same SwissKnife instance and sign in to the sa
 
 ## Packaging status
 
-The desktop workflow builds review artifacts for macOS (Intel and Apple Silicon), Windows x64 and Linux x64. A public signed release and platform installation checks are tracked in [SwissKnife #477](https://github.com/bitcoin-numeraire/swissknife/issues/477). Operators can continue to deploy the instance with [Docker](/swissknife/deployment/docker.mdx) or [Kubernetes](/swissknife/deployment/kubernetes.mdx).
+The installers are available for GitHub review. Open the [Desktop packages workflow](https://github.com/bitcoin-numeraire/swissknife/actions/workflows/desktop.yml), select the successful run for the desktop draft you are reviewing and find **Artifacts** on its summary page. Download **SwissKnife-macOS** (Intel and Apple Silicon), **SwissKnife-Windows** (x64) or **SwissKnife-Linux** (x64). The macOS artifact contains a DMG, Windows contains an NSIS installer, and Linux contains a DEB, an AppImage and their SHA-256 checksums. Public signing and distribution are deferred in [SwissKnife #477](https://github.com/bitcoin-numeraire/swissknife/issues/477). Operators can continue to deploy the instance with [Docker](/swissknife/deployment/docker.mdx) or [Kubernetes](/swissknife/deployment/kubernetes.mdx).
