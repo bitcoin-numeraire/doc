@@ -1,0 +1,117 @@
+---
+title: Configuration par défaut
+sidebar_position: 2
+image: /img/social.png
+---
+
+Le [fichier de configuration de SwissKnife](https://github.com/bitcoin-numeraire/swissknife/blob/main/config/default.toml) fournit les valeurs de départ d’une installation.
+
+:::note
+Le fichier fourni utilise le format TOML. SwissKnife accepte aussi YAML et JSON.
+:::
+
+Certains paramètres facultatifs et certaines valeurs sensibles figurent uniquement dans le fichier [`.env.example`](https://github.com/bitcoin-numeraire/swissknife/blob/main/.env.example) ou dans la [référence des paramètres](./index.mdx#configuration-values).
+
+```toml
+# Application
+invoice_expiry = "12h"
+domain = "numeraire.tech"
+host = "https://api.numeraire.tech"
+bitcoin_address_type = "p2wpkh"
+ln_provider = "cln_grpc"
+auth_provider = "jwt"
+dashboard_dir = "/var/www/swissknife-dashboard"
+
+# Conservation des événements. La valeur "0s" désactive la purge.
+[client_events]
+retention = "30d"
+cleanup_interval = "1h"
+
+# Serveur web
+[web]
+addr = "0.0.0.0:3000"
+request_timeout = "60s"
+
+# Fournisseur Core Lightning
+[cln_grpc_config]
+endpoint = "https://localhost:11002"
+certs_dir = "certs/lightningd"
+payment_timeout = "60s"
+# maxfee = 50000 # Plafond facultatif en msat. Par défaut, xpay utilise max(1 %, 5 000 msat).
+
+[cln_rest_config]
+endpoint = "http://localhost:3010"
+# ca_cert_path = "certs/lightningd/ca.cert" # Facultatif pour HTTP
+rune = "CHANGE_ME" # À fournir via un secret en production
+connect_timeout = "5s"
+timeout = "90s"
+connection_verbose = true
+accept_invalid_certs = false
+accept_invalid_hostnames = false
+payment_timeout = "60s"
+# maxfee = 50000 # Plafond facultatif en msat. Par défaut, xpay utilise max(1 %, 5 000 msat).
+ws_min_reconnect_delay = "1s"
+ws_max_reconnect_delay = "30s"
+
+# Fournisseur LND
+[lnd_rest_config]
+host = "localhost:8080"
+macaroon_path = "certs/lnd/admin.macaroon"
+# ca_cert_path = "certs/lnd/tls.cert" # Facultatif pour HTTP
+connect_timeout = "5s"
+timeout = "90s"
+connection_verbose = true
+accept_invalid_certs = false
+accept_invalid_hostnames = false
+payment_timeout = "60s"
+fee_limit_msat = 25000
+reorg_buffer_blocks = 2
+
+[lnd_grpc_config]
+endpoint = "https://localhost:10009"
+cert_path = "certs/lnd/tls.cert"
+macaroon_path = "certs/lnd/admin.macaroon"
+payment_timeout = "60s"
+fee_limit_msat = 25000
+reorg_buffer_blocks = 2
+
+# Journalisation
+[logging]
+format = "json"
+ansi = false
+line_number = false
+thread_ids = false
+thread_names = false
+level = "info"
+# Directives facultatives de filtrage pour tracing. Sans filtre, level s’applique globalement.
+# Exemple : "swissknife=debug"
+filter = "warn,swissknife=info"
+file = false
+
+# Authentification
+[oauth2]
+domain = "auth.numeraire.tech"
+audience = "https://swissknife.numeraire.tech/api/v1"
+jwks_refresh_interval = "1h"
+leeway = "60s"
+
+[jwt]
+token_expiry = "1h"
+secret = "CHANGE_ME" # À fournir via un secret en production
+
+# Base de données
+[database]
+url = "sqlite://storage/swissknife.db?mode=rwc"
+max_lifetime = "30m"
+idle_timeout = "5m"
+max_connections = 10
+min_connections = 0
+acquire_timeout = "5s"
+connect_timeout = "30s"
+sqlx_logging = false
+# SQLite : attente du verrou d’écriture avant de renvoyer SQLITE_BUSY.
+# PostgreSQL ignore ce paramètre.
+busy_timeout = "10s"
+```
+
+Pour adapter la configuration à votre installation, placez les valeurs à remplacer dans `development.toml` ou `production.toml`. Le [guide de configuration](./index.mdx) explique dans quel ordre les réglages sont appliqués.

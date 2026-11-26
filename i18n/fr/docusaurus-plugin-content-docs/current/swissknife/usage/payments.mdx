@@ -1,0 +1,157 @@
+---
+title: Paiements
+sidebar_position: 2
+image: /img/social.png
+---
+
+## Recevoir un paiement {#receiving}
+
+SwissKnife peut recevoir des bitcoins sur Lightning par facture, adresse Lightning, LNURL-pay ou zap Nostr. Il peut également recevoir un dépôt sur la chaîne Bitcoin.
+
+### Factures Lightning {#lightning-invoices}
+
+Pour demander un montant précis, créez une facture BOLT11 dans le portefeuille qui doit être crédité.
+
+- [`POST /v1/me/wallets/{wallet_id}/invoices`](https://api.numeraire.tech/docs#tag/me/POST/v1/me/wallets/{wallet_id}/invoices) crée la facture.
+- [`GET /v1/me/wallets/{wallet_id}/invoices`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/wallets/{wallet_id}/invoices) et [`GET /v1/me/wallets/{wallet_id}/invoices/{id}`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/wallets/{wallet_id}/invoices/{id}) permettent de consulter la liste des factures du portefeuille ou une facture en particulier.
+
+```bash
+curl -X POST https://your-instance:3000/v1/me/wallets/<wallet-id>/invoices \
+  -H 'Authorization: Bearer <jwt>' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "amount_msat": 100000,
+    "description": "Coffee",
+    "expiry": 3600
+  }'
+```
+
+Renseignez `amount_msat` en millisatoshis. La description (`description`) et la durée de validité en secondes (`expiry`) sont facultatives. SwissKnife vérifie que le portefeuille désigné dans le chemin appartient au compte authentifié.
+
+### Votre adresse Lightning {#your-lightning-address}
+
+Une adresse comme `username@your.domain` permet de recevoir des paiements sans transmettre une facture à chaque payeur. Le domaine est commun à l’instance et se règle dans la [configuration](../configuration/index.mdx).
+
+- [`POST /v1/me/lightning-address`](https://api.numeraire.tech/docs#tag/me/POST/v1/me/lightning-address) enregistre votre nom d’utilisateur (`username`).
+- [`GET /v1/me/lightning-address`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/lightning-address) renvoie votre adresse.
+- [`PUT /v1/me/lightning-address`](https://api.numeraire.tech/docs#tag/me/PUT/v1/me/lightning-address) modifie son état (`active`) ou ses paramètres Nostr.
+
+```bash
+curl -X POST https://your-instance:3000/v1/me/lightning-address \
+  -H 'Authorization: Bearer <jwt>' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "username": "alice",
+    "allows_nostr": true,
+    "nostr_pubkey": "<hex-pubkey>"
+  }'
+```
+
+L’adresse appartient au compte. SwissKnife dirige les factures vers son portefeuille en BTC natifs sur le réseau du nœud. Les opérations de création, lecture, modification et suppression sous `/v1/me` sont réservées au propriétaire du compte.
+
+### LNURL-pay
+
+Un portefeuille compatible LNURL peut résoudre une adresse Lightning sans s’authentifier auprès de SwissKnife.
+
+- [`GET /.well-known/lnurlp/{username}`](https://api.numeraire.tech/docs#tag/lnurl/GET/.well-known/lnurlp/{username}) renvoie la demande LNURL `payRequest` correspondant à l’adresse.
+- [`GET /lnurlp/{username}/callback`](https://api.numeraire.tech/docs#tag/lnurl/GET/lnurlp/{username}/callback) émet une facture pour le montant demandé.
+
+Les portefeuilles suivent ces étapes pour payer `username@your.domain`. Une intégration peut suivre le même parcours pour obtenir une facture et vérifier son règlement.
+
+#### Vérifier une facture avec LUD-21 {#lud-21-invoice-verification}
+
+Depuis SwissKnife 0.3.3, la réponse du callback contient une URL `verify` conforme à [LUD-21](https://github.com/lnurl/luds/blob/luds/21.md). Elle permet de vérifier le règlement sans avoir accès au nœud Lightning du bénéficiaire.
+
+Envoyez une requête `GET` à cette URL telle qu’elle vous a été fournie. Elle désigne `/lnurlp/{token}/verify` et fonctionne sans JWT ni clé API. Avant le règlement, le champ `pr` contient la facture BOLT11 d’origine.
+
+```json
+{
+  "status": "OK",
+  "settled": false,
+  "preimage": null,
+  "pr": "lnbc..."
+}
+```
+
+Après règlement, `settled` vaut `true` et `preimage` contient la préimage du paiement en hexadécimal. Cette vérification couvre aussi les règlements internes. Pour un jeton inconnu ou invalide, le serveur répond HTTP 200 avec `{"status":"ERROR","reason":"Not found"}`. Lisez donc le champ `status`.
+
+### Nostr, NIP-05 et zaps {#nostr-nip-05-and-zaps}
+
+Pour activer les zaps Lightning et la vérification NIP-05 sur une adresse, enregistrez-la avec `allows_nostr: true` et une clé publique `nostr_pubkey`.
+
+- [`GET /.well-known/nostr.json`](https://api.numeraire.tech/docs#tag/nostr/GET/.well-known/nostr.json) associe le nom d’utilisateur à sa clé publique Nostr en hexadécimal, conformément à [NIP-05](https://github.com/nostr-protocol/nips/blob/master/05.md).
+
+### Adresse de dépôt Bitcoin {#on-chain-bitcoin-address}
+
+Avec un nœud CLN ou LND auto-hébergé, demandez une adresse de dépôt pour recevoir des bitcoins sur la chaîne.
+
+- [`POST /v1/me/wallets/{wallet_id}/bitcoin/addresses`](https://api.numeraire.tech/docs#tag/me/POST/v1/me/wallets/{wallet_id}/bitcoin/addresses) renvoie l’adresse du portefeuille sélectionné.
+
+```bash
+curl -X POST https://your-instance:3000/v1/me/wallets/<wallet-id>/bitcoin/addresses \
+  -H 'Authorization: Bearer <jwt>' \
+  -H 'Content-Type: application/json' \
+  -d '{}'
+```
+
+L’adresse reste la même jusqu’à sa première utilisation sur la chaîne. Le prochain appel renvoie alors une nouvelle adresse. Vous pouvez préciser le `type` de script (`p2pkh`, `p2sh`, `p2wpkh` ou `p2tr`). À défaut, SwissKnife applique `bitcoin_address_type`, qui vaut `p2wpkh` par défaut. Seul le propriétaire du portefeuille peut utiliser cette route. Consultez aussi la section sur la [gestion des adresses](#on-chain-bitcoin-wallet).
+
+## Envoyer un paiement {#sending}
+
+Les paiements sortants passent par la même route. Le champ `input` peut contenir une facture BOLT11, une LNURL ou une adresse Lightning. Un paiement vers un autre portefeuille de la même instance est réglé immédiatement dans le registre interne.
+
+- [`POST /v1/me/wallets/{wallet_id}/payments`](https://api.numeraire.tech/docs#tag/me/POST/v1/me/wallets/{wallet_id}/payments) envoie un paiement depuis le portefeuille sélectionné.
+- [`GET /v1/me/wallets/{wallet_id}/payments`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/wallets/{wallet_id}/payments) et [`GET /v1/me/wallets/{wallet_id}/payments/{id}`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/wallets/{wallet_id}/payments/{id}) permettent de retrouver ses paiements sortants.
+
+```bash
+# Payer une facture BOLT11
+curl -X POST https://your-instance:3000/v1/me/wallets/<wallet-id>/payments \
+  -H 'Authorization: Bearer <jwt>' \
+  -H 'Content-Type: application/json' \
+  -d '{ "input": "lnbc1..." }'
+
+# Payer une adresse Lightning en précisant le montant
+curl -X POST https://your-instance:3000/v1/me/wallets/<wallet-id>/payments \
+  -H 'Authorization: Bearer <jwt>' \
+  -H 'Content-Type: application/json' \
+  -d '{ "input": "bob@example.com", "amount_msat": 100000, "comment": "Thanks!" }'
+```
+
+Le champ `input` est obligatoire. Si la facture BOLT11 contient déjà le montant, omettez `amount_msat`. Pour une LNURL ou une adresse Lightning, renseignez-le. Le champ facultatif `comment` transmet un message au bénéficiaire lors d’un paiement LNURL.
+
+SwissKnife vérifie l’appartenance du portefeuille avant l’envoi ou la consultation de ses paiements.
+
+:::tip
+Un administrateur autorisé peut envoyer un paiement pour le compte d’un portefeuille avec [`POST /v1/payments`](https://api.numeraire.tech/docs#tag/payments/POST/v1/payments). Il doit fournir explicitement le `wallet_id`.
+:::
+
+## Estimation des frais et paiements en attente {#fee-estimates-and-pending-payments}
+
+`POST /v1/me/wallets/{wallet_id}/payments/fee-estimate` accepte la même destination que l’envoi. Pour Lightning, le devis distingue l’estimation des frais, lorsqu’elle est disponible, du plafond imposé par le fournisseur. Pour Bitcoin sur la chaîne, le nœud prépare une transaction temporaire puis la libère. Il en prépare une nouvelle lors de l’envoi, dont les frais peuvent différer. Les transferts internes sont sans frais.
+
+Une réponse HTTP réussie peut contenir un paiement en attente. Si l’issue d’un envoi Lightning ou d’une diffusion Bitcoin reste inconnue, SwissKnife garde le montant réservé. Le nœud peut confirmer ensuite un règlement ou un échec. Certains cas nécessitent un rapprochement manuel. Une requête HTTP expirée ne suffit pas à justifier un nouvel envoi.
+
+### Réessayer après un échec {#trying-a-failed-payment-again}
+
+Une fois le paiement passé à `Failed`, un administrateur disposant de `write:transaction` peut supprimer son enregistrement depuis le tableau des transactions ou avec `DELETE /v1/payments/{id}`. Il peut ensuite lancer un nouvel envoi avec une facture toujours valide. Si le paiement est en attente, attendez son issue avant de réessayer.
+
+## Portefeuille Bitcoin sur la chaîne {#on-chain-bitcoin-wallet}
+
+Avec CLN ou LND en auto-hébergement, SwissKnife gère les adresses, synchronise le portefeuille avec le nœud et prépare les transactions avant leur diffusion.
+
+### Créer et gérer les adresses {#generating-and-managing-addresses}
+
+- [`POST /v1/me/wallets/{wallet_id}/bitcoin/addresses`](https://api.numeraire.tech/docs#tag/me/POST/v1/me/wallets/{wallet_id}/bitcoin/addresses) renvoie une [adresse de dépôt](#on-chain-bitcoin-address) pour le portefeuille sélectionné.
+- [`GET /v1/bitcoin/addresses`](https://api.numeraire.tech/docs#tag/bitcoin-addresses/GET/v1/bitcoin/addresses) liste les adresses Bitcoin avec filtres et pagination.
+- [`GET /v1/bitcoin/addresses/{id}`](https://api.numeraire.tech/docs#tag/bitcoin-addresses/GET/v1/bitcoin/addresses/{id}) renvoie une adresse précise.
+- [`DELETE /v1/bitcoin/addresses`](https://api.numeraire.tech/docs#tag/bitcoin-addresses/DELETE/v1/bitcoin/addresses) et [`DELETE /v1/bitcoin/addresses/{id}`](https://api.numeraire.tech/docs#tag/bitcoin-addresses/DELETE/v1/bitcoin/addresses/{id}) suppriment des adresses.
+
+Chaque enregistrement contient l’adresse (`address`), son type (`address_type`) et un indicateur `used` précisant si elle a déjà reçu des fonds. Les routes de lecture administratives exigent `read:btc_address`. La création et la suppression administratives exigent `write:btc_address`.
+
+### Synchronisation et préparation des transactions {#wallet-sync-and-transaction-preparation}
+
+SwissKnife synchronise l’état du portefeuille avec le nœud pour détecter les dépôts et mettre les soldes à jour. Le nœud prépare chaque transaction sortante avant sa diffusion. Pour envoyer sur la chaîne, passez l’adresse Bitcoin à la même route que pour un paiement Lightning, [`POST /v1/me/wallets/{wallet_id}/payments`](https://api.numeraire.tech/docs#tag/me/POST/v1/me/wallets/{wallet_id}/payments).
+
+:::note
+Le portefeuille sur la chaîne utilise votre fournisseur CLN ou LND et le réglage `bitcoin_address_type`. Consultez les [fournisseurs de liquidité](../configuration/liquidity-providers.mdx) et la [configuration](../configuration/index.mdx).
+:::

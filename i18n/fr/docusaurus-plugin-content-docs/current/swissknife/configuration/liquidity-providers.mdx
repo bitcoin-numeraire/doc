@@ -1,0 +1,59 @@
+---
+title: Fournisseurs de liquidité
+sidebar_position: 2
+image: /img/social.png
+---
+
+SwissKnife se connecte à un nœud pour émettre et recevoir des paiements. Les adaptateurs Core Lightning et LND prennent en charge Lightning et Bitcoin sur la chaîne, y compris les adresses de dépôt, la synchronisation, l’estimation des frais et la diffusion des transactions.
+
+Les soldes des portefeuilles sont comptabilisés dans le registre SwissKnife. L’exploitant est responsable des fonds qui couvrent ces soldes et de la liquidité du nœud. Changer de nœud conserve les soldes du registre.
+
+:::tip
+Pour commencer en auto-hébergement, connectez votre propre nœud **Core Lightning (CLN)** ou **LND**. Vous gardez le contrôle du nœud et de sa liquidité. Les deux implémentations sont disponibles via gRPC et REST.
+:::
+
+:::note
+Le portefeuille Bitcoin du nœud gère les adresses, synchronise les transactions et prépare les envois avant diffusion. La clé `bitcoin_address_type` à la racine choisit le type de script parmi `p2pkh`, `p2sh`, `p2wpkh` (par défaut) et `p2tr`.
+:::
+
+Réglez `ln_provider` sur `cln_grpc`, `cln_rest`, `lnd_grpc` ou `lnd_rest`. Pour CLN, les identifiants doivent autoriser `xpay` pour les paiements Lightning et `getroutes` pour l’estimation des frais.
+
+## Core Lightning {#core-lightning}
+
+[Core Lightning](https://corelightning.org/) est développé en C et en Rust par Blockstream. Vous exploitez votre nœud et gérez votre liquidité.
+
+### gRPC (`ln_provider = "cln_grpc"`) {#grpc-ln_provider--cln_grpc}
+
+Consultez les [paramètres gRPC de Core Lightning](./index.mdx#core-lightning-provider-grpc).
+
+### REST (`ln_provider = "cln_rest"`) {#rest-ln_provider--cln_rest}
+
+Consultez les [paramètres REST de Core Lightning](./index.mdx#core-lightning-provider-rest).
+
+## LND
+
+[Lightning Network Daemon](https://github.com/lightningnetwork/lnd) (LND) est une implémentation de nœud Lightning en Go développée par Lightning Labs. Vous exploitez votre nœud et gérez votre liquidité.
+
+:::note
+Le fichier désigné par `macaroon_path` peut contenir un macaroon binaire ou encodé en base64. SwissKnife détecte le format.
+:::
+
+### gRPC (`ln_provider = "lnd_grpc"`) {#grpc-ln_provider--lnd_grpc}
+
+Consultez les [paramètres gRPC de LND](./index.mdx#lnd-provider-grpc).
+
+### REST (`ln_provider = "lnd_rest"`) {#rest-ln_provider--lnd_rest}
+
+Consultez les [paramètres REST de LND](./index.mdx#lnd-provider-rest).
+
+## Phoenixd
+
+[phoenixd](https://github.com/ACINQ/phoenixd) est la version serveur du portefeuille Phoenix. La version de SwissKnife décrite ici ne propose pas d’adaptateur phoenixd.
+
+## Lightspark
+
+[Lightspark](https://www.lightspark.com/) propose un service de paiements Lightning. La version de SwissKnife décrite ici ne propose pas d’adaptateur Lightspark.
+
+## Proposer un fournisseur {#not-finding-your-provider}
+
+Décrivez le fournisseur et le besoin de votre installation dans un [ticket SwissKnife](https://github.com/bitcoin-numeraire/swissknife/issues).

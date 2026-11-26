@@ -1,0 +1,151 @@
+---
+title: Architecture
+sidebar_position: 1
+image: /img/social.png
+---
+
+SwissKnife relie des comptes et leurs portefeuilles à un registre SQL et à un nœud Lightning. Cette page décrit l’organisation du code, le traitement des opérations et les modes de déploiement. Consultez la [configuration](../configuration/index.mdx) pour les paramètres exacts et la [référence REST](https://api.numeraire.tech/docs) pour les requêtes et les réponses.
+
+## Organisation du code {#design-overview}
+
+Le code Rust se répartit entre trois couches.
+
+- **`domains`** contient la logique métier. Chaque domaine définit ses entités, ses services, ses cas d’utilisation et ses interfaces de persistance.
+- **`infra`** fournit les adaptateurs pour le serveur HTTP, les bases de données, les nœuds Lightning, l’authentification et les journaux.
+- **`application`** assemble les services et les adaptateurs au démarrage. Cette couche centralise également les définitions d’erreurs et la description OpenAPI.
+
+Les services métier dépendent d’interfaces. On peut ainsi les tester isolément et changer de fournisseur Lightning ou de moteur SQL en adaptant la configuration de l’infrastructure.
+
+```text
+                 Serveur HTTP Axum
+                         │
+                     AppServices
+                         │
+              Services métier et traits
+                 ┌───────┴────────┐
+              AppStore       LnClient / BitcoinWallet
+                 │                │
+       Adaptateurs SeaORM    Adaptateurs CLN ou LND
+                 │                │
+        PostgreSQL / SQLite  Nœud Lightning et réseau Bitcoin
+```
+
+### Organisation d’un domaine {#anatomy-of-a-domain}
+
+Dans le domaine `invoice`, par exemple, les modules se répartissent les tâches suivantes.
+
+- **`*_handler`** traduit la requête HTTP Axum en appel métier et sérialise la réponse.
+- **`*_service`** implémente la logique métier.
+- **`*_use_cases`** définit par un trait les opérations offertes par le domaine.
+- **`*_repository`** définit les opérations de persistance que `infra` doit implémenter.
+- **`entities`** regroupe les types du domaine.
+
+| Domaine | Responsabilité |
+| --- | --- |
+| `invoice` | Créer et suivre les factures Lightning entrantes. |
+| `payment` | Envoyer les paiements et rapprocher leur état avec le nœud. |
+| `ln_address` | Gérer les [adresses Lightning](https://lightningaddress.com/) comme `username@your.domain`. |
+| `lnurl` | Servir LNURL-pay, `.well-known/lnurlp` et la vérification LUD-21. |
+| `nostr` | Servir les identités NIP-05 via `.well-known/nostr.json`. |
+| `bitcoin` | Gérer les adresses sur la chaîne, synchroniser le portefeuille et préparer les transactions. |
+| `account` | Gérer les profils, identités, clés API, permissions, préférences et paramètres du tableau de bord. |
+| `asset` | Identifier chaque actif, par exemple les BTC natifs d’un réseau Bitcoin précis. |
+| `wallet` | Tenir le solde de chaque portefeuille pour son compte et son actif. |
+| `system` | Fournir les sondes de santé, l’état de l’installation et la configuration du nœud. |
+| `event` | Enregistrer les événements métier utilisés pour mettre à jour les vues et rapprocher les opérations. |
+
+## Interface avec le fournisseur de liquidité {#the-liquidity-provider-abstraction}
+
+L’exploitant choisit le nœud Lightning auquel connecter SwissKnife. Les domaines utilisent `LnClient` pour Lightning et `BitcoinWallet` pour les opérations sur la chaîne. Les appels RPC propres au nœud restent dans les adaptateurs.
+
+| `ln_provider` | Nœud | Transport |
+| --- | --- | --- |
+| `cln_grpc` | Core Lightning | gRPC |
+| `cln_rest` | Core Lightning | REST |
+| `lnd_grpc` | LND | gRPC |
+| `lnd_rest` | LND | REST |
+
+Au démarrage, la couche `application` construit le client indiqué par `ln_provider`. L’adaptateur LND reconnaît les macaroons binaires et les fichiers encodés en base64.
+
+Le registre tient les soldes des portefeuilles indépendamment de la liquidité du nœud. Changer de fournisseur conserve ces soldes. Si l’issue d’un paiement reste incertaine, les fonds restent réservés jusqu’au rapprochement. L’exploitant gère la couverture des soldes et les opérations qui nécessitent une vérification auprès du fournisseur. Consultez les [paramètres des fournisseurs](../configuration/liquidity-providers.mdx).
+
+### Opérations sur la chaîne Bitcoin {#on-chain-bitcoin-support}
+
+Avec CLN ou LND, le trait `BitcoinWallet` permet de dériver une adresse (`new_address`), de synchroniser le portefeuille (`synchronize`), de rechercher les sorties et de préparer une transaction (`prepare_transaction`) avant sa signature et sa diffusion. `bitcoin_address_type` accepte `p2pkh`, `p2sh`, `p2wpkh` ou `p2tr`. La valeur par défaut est `p2wpkh`.
+
+Les interfaces Lightning et Bitcoin utilisent la même connexion au nœud. Le portefeuille sur la chaîne utilise ainsi les fonds et la connexion au réseau Bitcoin de ce nœud.
+
+## Persistance {#persistence}
+
+SwissKnife utilise [SeaORM](https://www.sea-ql.org/SeaORM/). `AppStore` regroupe des interfaces telles que `InvoiceRepository`, `PaymentRepository`, `WalletRepository` et `BtcAddressRepository`. Chaque interface dispose d’une implémentation SeaORM.
+
+- **SQLite**, le moteur par défaut, utilise le journal WAL. Le paramètre `busy_timeout` règle l’attente du verrou en écriture. Plusieurs lecteurs peuvent accéder à la base pendant qu’un processus écrit.
+- **PostgreSQL** convient aux déploiements à plusieurs instances ou à plus fort débit.
+
+La chaîne `database.url` détermine le moteur. Le serveur applique les migrations du schéma au démarrage avant d’accepter les requêtes.
+
+Chaque ligne `wallet` porte le solde d’un seul `asset`. Les réservations, débits et crédits portent sur ce portefeuille. Lorsqu’une opération touche plusieurs tables, les unités de travail telles que `PaymentUnitOfWork` et `EventProjectionUnitOfWork` regroupent les écritures en une transaction. Par exemple, le paiement et sa réservation sont enregistrés ensemble.
+
+## Authentification et autorisations {#authentication-and-authorization}
+
+Les requêtes protégées présentent un JWT dans l’en-tête `Authorization` avec le préfixe `Bearer`, ou une clé dans l’en-tête `Api-Key`. Le réglage `auth_provider` détermine la vérification des JWT.
+
+- Avec **`jwt`**, SwissKnife signe et vérifie les jetons avec `jwt.secret`. Le premier administrateur crée ses identifiants via `/v1/auth/sign-up`, puis peut activer les connexions locales d’autres comptes. Les mots de passe sont conservés sous forme d’empreintes Argon2id. Un changement ou une réinitialisation du mot de passe révoque les sessions JWT locales.
+- Avec **`oauth2`**, SwissKnife lit le document de découverte OIDC du fournisseur défini par `oauth2.domain` et en déduit l’émetteur canonique et l’URI JWKS. Il vérifie ensuite les jetons avec les clés publiques du fournisseur.
+
+Pour une clé API, SwissKnife calcule l’empreinte SHA-256 de la valeur reçue et retrouve le compte ainsi que les permissions associées à cette clé.
+
+Les routes `/v1/me` donnent accès aux ressources du compte authentifié et aux portefeuilles lui appartenant. Les routes administratives vérifient des permissions telles que `read:account`, `write:account`, `read:wallet`, `write:transaction`, `read:btc_address` et `write:api_key`. Elles proviennent des déclarations du jeton OAuth2, du compte en mode JWT local ou de la clé API présentée. Le premier administrateur local reçoit toutes les permissions.
+
+## Serveur HTTP et suivi du nœud {#the-http-server-and-event-listener}
+
+`main` démarre le serveur HTTP, le suivi des événements du nœud et la tâche qui applique la politique de conservation des événements clients.
+
+1. Le service de suivi s’abonne au flux du nœud via gRPC ou WebSocket selon le fournisseur. Il synchronise les factures et les paiements avant l’ouverture du serveur HTTP, puis enregistre les règlements et les dépôts dans la base. Après une interruption, il se reconnecte avec des délais croissants et reprend la synchronisation.
+2. Le serveur Axum expose `/v1/invoices`, `/v1/payments`, `/v1/wallets`, `/v1/me`, `/v1/auth`, `/v1/api-keys`, `/v1/lightning-addresses`, `/v1/bitcoin/addresses` et `/v1/system`. Il sert également les routes LNURL et `.well-known` ainsi que la référence interactive sous `/docs`. Dans l’image tout-en-un, il sert aussi les fichiers du tableau de bord. Les couches HTTP assurent le traçage, les délais d’expiration et CORS. `Ctrl+C` ou `SIGTERM` déclenche un arrêt ordonné.
+
+## Comptes, actifs et portefeuilles {#account-and-asset-wallet-model}
+
+Un `account` délimite les ressources d’une personne ou d’une organisation. Une `auth_identity` indique comment elle se connecte (identifiants locaux ou sujet OAuth2). Un `wallet` associe un solde à un seul `asset` de ce compte.
+
+L’actif identifie la monnaie et son réseau de règlement. Les BTC natifs sur le réseau principal, les BTC natifs sur regtest et les futurs actifs Taproot ont des identités distinctes, même si leurs symboles d’affichage se ressemblent. Les factures et les paiements tirent leur unité de l’`asset_id` du portefeuille sélectionné.
+
+Une même base peut conserver des portefeuilles de plusieurs réseaux. Le fournisseur détermine les opérations actuellement possibles. Avant de réserver des fonds ou d’effectuer une opération sur le nœud, SwissKnife vérifie la compatibilité de l’actif et du réseau du paiement ou de l’adresse. Les portefeuilles d’autres réseaux conservent leur historique et peuvent être utilisés avec un fournisseur approprié.
+
+Les routes authentifiées désignent explicitement le portefeuille concerné.
+
+```text
+GET /v1/me                    -> account profile + lightweight wallets
+PUT /v1/me                    -> update display name
+GET /v1/me/wallets            -> account wallets
+GET /v1/me/wallets/{id}       -> one owned wallet
+GET /v1/me/wallets/{id}/balance
+POST /v1/me/wallets/{id}/payments
+POST /v1/me/wallets/{id}/invoices
+POST /v1/me/wallets/{id}/bitcoin/addresses
+```
+
+Les anciens clients qui traitaient `/v1/me` comme un portefeuille doivent sélectionner un portefeuille. Avant un mouvement de fonds, SwissKnife vérifie l’appartenance du portefeuille et la compatibilité de son actif.
+
+Les portefeuilles inclus dans la réponse `Account` contiennent les métadonnées de l’actif et les soldes. Le tableau de bord conserve cette liste et mémorise l’identifiant actif dans les préférences du compte. Il charge les paiements, factures, adresses et contacts du portefeuille choisi à la demande.
+
+L’annuaire des comptes renvoie aux portefeuilles de chaque titulaire. L’annuaire des portefeuilles permet de retrouver le compte propriétaire et le détail de chaque solde.
+
+## Événements clients persistants {#durable-client-events}
+
+SwissKnife enregistre chaque événement de règlement dans la même transaction que le paiement ou la facture et la modification du solde. `GET /v1/me/events` diffuse les événements du compte authentifié, avec l’identifiant du portefeuille et un curseur de reprise. Le tableau de bord actualise les ressources via REST à la réception des événements et après une reconnexion.
+
+Le [guide des événements](../usage/events.mdx) décrit l’authentification, les types, la relecture et la reprise du flux. La [configuration](../configuration/index.mdx#client-settlement-events) détaille la conservation et le nettoyage.
+
+## Déploiement {#deployment-topology}
+
+SwissKnife fournit trois images Docker pour `linux/amd64` et `linux/arm64`. Le [guide Docker](/swissknife/deployment/docker.mdx) explique leur installation.
+
+- **Image tout-en-un**. `bitcoinnumeraire/swissknife` sert l’API et les fichiers statiques du tableau de bord depuis le même conteneur, sur le port `3000`. Le serveur localise les fichiers avec `dashboard_dir`.
+- **Serveur et tableau de bord séparés**. `bitcoinnumeraire/swissknife-server` sert l’API sur le port `3000`. `bitcoinnumeraire/swissknife-dashboard` sert le tableau de bord Next.js sur le port `8080`. Dans ce mode, le serveur démarre sans répertoire de tableau de bord.
+
+Les deux déploiements utilisent le même serveur applicatif et le même modèle de données.
+
+:::tip
+Pour une instance personnelle, commencez avec l’image tout-en-un et SQLite. Les images séparées et PostgreSQL permettent ensuite de dimensionner le serveur et le tableau de bord indépendamment.
+:::

@@ -40,7 +40,7 @@ Set `NUMERAIRE_WEBSITE_ORIGIN` when building the docs to point the navigation an
 
 Build the documentation image with `docker build --target serve -t numeraire-docs .`. A clone with Git history includes each guide’s last update. A source archive or linked worktree builds the same pages and omits authors and dates it cannot verify.
 
-English guides use the root paths. French guides use the same paths under `/fr`. Add a translation under `i18n/fr/docusaurus-plugin-content-docs/current/` with the same relative filename as its English source. When linking between translated and English guides, use a Markdown file path relative to the docs root (for example `/developers/api-keys.mdx`) so Docusaurus can resolve either source. While a guide awaits translation, the French edition labels its English text. Run `yarn start --locale fr` to preview French or `yarn build` to check both editions.
+English guides use the root paths. French guides use the same paths under `/fr`. Add a translation under `i18n/fr/docusaurus-plugin-content-docs/current/` with the same relative filename as its English source. When linking between translated and English guides, use a Markdown file path relative to the docs root (for example `/developers/api-keys.mdx`) so Docusaurus can resolve either source. Keep explicit section IDs stable in both editions when another page links to a heading. The French edition labels English fallback text when a newly added guide awaits translation. Run `yarn start --locale fr` to preview French or `yarn build` to check both editions.
 
 ## Dependency audit
 
