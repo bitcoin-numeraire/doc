@@ -1,0 +1,29 @@
+---
+title: Autorisations
+sidebar_position: 4
+image: /img/social.png
+---
+
+SwissKnife vérifie l’appartenance des ressources au compte et les permissions administratives requises pour chaque opération.
+
+- Les routes `/v1/me` portent sur le compte authentifié. Lorsqu’un identifiant de portefeuille figure dans le chemin, le portefeuille doit appartenir à ce compte. Ces routes sont accessibles sans permission administrative.
+- Les routes administratives hors de `/me` vérifient la permission propre à l’opération.
+
+## Permissions
+
+Les permissions sont des chaînes telles que `read:account`, `write:account`, `read:wallet` et `write:transaction`.
+
+- En mode OAuth2/OIDC, le fournisseur d’identité inscrit les permissions effectives dans le jeton. Leur modification relève du fournisseur.
+- En mode JWT local, les permissions sont enregistrées sur le compte. Le premier administrateur reçoit toutes les permissions. Un administrateur peut remplacer celles d’un autre compte local avec `PUT /v1/accounts/{id}/permissions`.
+- Chaque clé API conserve l’accès aux routes `/v1/me` de son compte. Ses propres permissions ouvrent les routes administratives correspondantes. La clé peut être révoquée séparément.
+
+### Exemple {#example}
+
+```json
+{
+  "sub": "1234567890",
+  "permissions": ["read:transaction"]
+}
+```
+
+Dans cet exemple, l’appelant peut consulter les factures et les paiements. La [référence de l’API](https://api.numeraire.tech/docs) indique la permission requise pour chaque route.

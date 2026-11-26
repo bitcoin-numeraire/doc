@@ -1,0 +1,78 @@
+---
+title: Événements
+sidebar_position: 3
+image: /img/social.png
+---
+
+Un événement signale qu’une facture ou un paiement a changé d’état. Le tableau de bord utilise ces notifications pour actualiser les soldes et l’historique. Pour connaître l’état courant, interrogez l’API REST.
+
+SwissKnife diffuse les événements par **SSE** (*server-sent events*). La livraison par webhook est prévue.
+
+## S’abonner au flux SSE {#subscribe-over-sse}
+
+Ouvrez `GET /v1/me/events` avec un jeton Bearer ou l’en-tête `Api-Key`.
+
+```bash
+curl --no-buffer --include https://your-instance:3000/v1/me/events \
+  -H 'Accept: text/event-stream' \
+  -H "Authorization: Bearer $SWISSKNIFE_TOKEN"
+```
+
+Pour une clé API, remplacez l’en-tête `Authorization` par `Api-Key: YOUR_API_KEY`. Le compte peut ouvrir le flux sans permission administrative. Il reçoit les événements de tous ses portefeuilles. Le champ `wallet_id` désigne le portefeuille concerné.
+
+La réponse `text/event-stream` reste ouverte. Pendant les périodes sans activité, le serveur envoie un commentaire toutes les 15 secondes pour maintenir la connexion. Ce commentaire n’a pas d’identifiant et ne fait pas partie de l’historique. Appuyez sur `Ctrl+C` pour arrêter curl.
+
+Choisissez un client SSE qui permet de définir les en-têtes d’authentification. Dans un navigateur, un client fondé sur `fetch` peut transmettre `Authorization` ou `Api-Key`. L’API native `EventSource` ne le permet pas. Transmettez les identifiants dans les en-têtes.
+
+## Types et contenu des événements {#event-types-and-payloads}
+
+| Événement | Signification |
+| --- | --- |
+| `invoice.pending` | Le fournisseur a signalé un dépôt Bitcoin non confirmé. |
+| `invoice.paid` | Une facture entrante ou un dépôt a été crédité. |
+| `payment.settled` | Un paiement sortant a été réglé. |
+| `payment.failed` | Un paiement sortant a été marqué en échec. |
+
+L’identifiant SSE `id` sert de curseur de reprise. Le champ SSE `event` porte l’un des noms ci-dessus. Le champ SSE `data` contient un objet JSON `ClientEvent`.
+
+| Champ | Contenu |
+| --- | --- |
+| `id` | Identifiant de l’événement sous forme de chaîne, identique à l’identifiant SSE. |
+| `event_type` | Nom de l’événement, identique au champ SSE `event`. |
+| `wallet_id` | Portefeuille concerné. |
+| `resource_id` | Identifiant de la facture ou du paiement. |
+| `data` | État public complet de la facture ou du paiement lors de l’enregistrement de l’événement. |
+| `created_at` | Horodatage de l’événement. |
+
+SwissKnife enregistre l’événement, la modification de la ressource et le changement de solde dans la même transaction. Pour lire une modification ultérieure, consultez la ressource avec REST.
+
+Un dépôt sur la chaîne conserve le même identifiant de facture entre `invoice.pending` et `invoice.paid`. LND signale les dépôts non confirmés. CLN les découvre après confirmation et envoie alors directement `invoice.paid`.
+
+## Reprendre une connexion {#reconnect-and-replay}
+
+Sans curseur, le flux commence après le dernier événement conservé pour le compte. Pour reprendre une lecture, mémorisez l’identifiant du dernier événement traité avec succès et transmettez-le à la reconnexion.
+
+```bash
+curl --no-buffer --include https://your-instance:3000/v1/me/events \
+  -H 'Accept: text/event-stream' \
+  -H "Authorization: Bearer $SWISSKNIFE_TOKEN" \
+  -H 'Last-Event-ID: 42'
+```
+
+La reprise renvoie les événements suivants par identifiant croissant. Le paramètre `?after=42` permet aussi de relire l’historique. Si la requête contient les deux, `Last-Event-ID` est prioritaire. Les identifiants d’un compte peuvent présenter des écarts.
+
+La livraison est garantie **au moins une fois**. Éliminez les doublons par identifiant et enregistrez le curseur après le traitement. Rouvrez le flux après une erreur réseau ou une fermeture normale. Dès que la connexion est établie, actualisez les ressources par REST pour couvrir aussi les changements intervenus depuis la lecture précédente.
+
+Le serveur vérifie l’authentification toutes les 15 secondes. L’expiration d’un jeton ou la révocation d’une clé ferme le flux. Obtenez un identifiant valide avant de vous reconnecter.
+
+## Curseurs expirés et erreurs {#expired-cursors-and-errors}
+
+Par défaut, le serveur conserve les événements pendant 30 jours et lance le nettoyage toutes les heures. Si le curseur précède l’historique disponible, le serveur renvoie **HTTP 409** avant d’ouvrir le flux. Actualisez les ressources par REST, abandonnez ce curseur et reconnectez-vous sans `Last-Event-ID` ni `after`. Le nettoyage peut aussi fermer un flux déjà ouvert.
+
+Un curseur mal formé ou négatif entraîne **HTTP 400**. Des identifiants absents ou invalides entraînent **HTTP 401**.
+
+## Configuration
+
+Le flux SSE est actif par défaut. Les [paramètres des événements](../configuration/index.mdx#client-settlement-events) règlent la conservation et le nettoyage. Aucun service supplémentaire n’est nécessaire.
+
+Sur un proxy inverse, activez les réponses en continu, désactivez leur mise en mémoire tampon et réglez le délai d’inactivité au-delà de 15 secondes.

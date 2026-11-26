@@ -1,0 +1,41 @@
+---
+title: Authentification
+sidebar_position: 3
+image: /img/social.png
+---
+
+SwissKnife peut authentifier un compte localement ou auprès d’un fournisseur d’identité externe.
+
+## JWT (`auth_provider = "jwt"`) {#jwt-auth_provider--jwt}
+
+Chaque compte local se connecte avec son propre nom d’utilisateur et son mot de passe via [`POST /v1/auth/sign-in`](https://api.numeraire.tech/docs#tag/authentication/POST/v1/auth/sign-in). Configurez `jwt.secret` et, si nécessaire, la durée de validité `jwt.token_expiry`.
+
+Au premier démarrage, [`POST /v1/auth/sign-up`](https://api.numeraire.tech/docs#tag/authentication/POST/v1/auth/sign-up) crée le compte administrateur initial. Choisissez un nom d’utilisateur, un mot de passe et, si vous le souhaitez, un nom à afficher. Le nom d’utilisateur accepte 3 à 64 caractères ASCII parmi les lettres, chiffres, points, tirets bas et traits d’union. Il est enregistré en minuscules. Le mot de passe doit compter au moins 15 caractères et tenir dans 1 024 octets en UTF-8. SwissKnife en conserve une empreinte Argon2id.
+
+L’administrateur peut ensuite créer des comptes et activer leurs identifiants dans l’annuaire du tableau de bord ou via l’[API d’administration des comptes](../usage/accounts.mdx). Le titulaire utilise son code d’activation à usage unique avec `POST /v1/auth/reset-password`, choisit un mot de passe et se connecte avec le nom d’utilisateur attribué.
+
+Un utilisateur connecté change son mot de passe avec `POST /v1/auth/change-password`. Un administrateur peut émettre un code de réinitialisation pour un autre compte ou désactiver sa connexion locale. Les codes d’activation et de réinitialisation expirent après 30 minutes. Changer ou réinitialiser le mot de passe ou désactiver la connexion révoque les sessions JWT locales du compte. Les clés API ont leur propre cycle de vie.
+
+:::note Migration d’une ancienne installation
+Le format des identifiants locaux a changé dans la version 0.3.1. Si votre installation utilisait uniquement un mot de passe, configurez de nouveaux identifiants locaux puis reconnectez-vous avec un nom d’utilisateur.
+:::
+
+Consultez les [paramètres JWT](./index.mdx#authentication).
+
+## OAuth2 (`auth_provider = "oauth2"`) {#oauth2-auth_provider--oauth2}
+
+Les utilisateurs se connectent auprès de votre fournisseur d’identité. Renseignez `oauth2.domain` et `oauth2.audience` dans la configuration.
+
+`oauth2.domain` désigne l’URL de base de l’émetteur. Le schéma par défaut est `https`. La découverte OpenID Connect (OIDC) fournit l’identifiant canonique de l’émetteur et l’URI de son jeu de clés publiques (JWKS). SwissKnife récupère périodiquement ces clés selon `jwks_refresh_interval` pour vérifier les jetons, y compris après une rotation.
+
+À la première requête authentifiée, SwissKnife associe le sujet `sub` à un compte et met à disposition son portefeuille en BTC natifs sur le réseau configuré. Plusieurs requêtes initiales simultanées aboutissent au même compte et au même portefeuille.
+
+Consultez les [paramètres OAuth2](./index.mdx#authentication). Cette intégration a été testée avec [Auth0](https://auth0.com/).
+
+## Clés API {#api-keys}
+
+Une clé API authentifie également les requêtes. Chaque clé appartient à un compte et donne accès aux routes `/v1/me` de ce compte. Son tableau de permissions peut accorder un accès administratif supplémentaire.
+
+## Proposer une méthode d’authentification {#not-finding-your-preferred-auth-method}
+
+Décrivez votre besoin dans un [ticket SwissKnife](https://github.com/bitcoin-numeraire/swissknife/issues).

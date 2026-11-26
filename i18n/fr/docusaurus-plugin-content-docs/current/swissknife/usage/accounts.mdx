@@ -1,0 +1,32 @@
+---
+title: Administration des comptes
+sidebar_position: 4
+image: /img/social.png
+---
+
+Utilisez les routes sous `/v1/accounts` pour gérer les comptes de l’instance.
+
+- `POST /v1/accounts` crée un compte avec ses permissions initiales et, si nécessaire, un nom à afficher. Pour permettre la connexion locale en mode JWT, attribuez-lui un nom d’utilisateur et émettez un code d’activation avec `POST /v1/accounts/{id}/login`.
+- `GET /v1/accounts` et `GET /v1/accounts/{id}` renvoient la liste des comptes ou les informations d’un compte.
+- `PUT /v1/accounts/{id}` remplace les champs modifiables du profil.
+- `PUT /v1/accounts/{id}/permissions` remplace les permissions d’un compte JWT local.
+- `DELETE /v1/accounts/{id}` supprime le compte ainsi que ses portefeuilles, clés API, identités, préférences et adresses. Le compte authentifié ne peut pas se supprimer lui-même.
+
+La lecture exige `read:account`. La création, la modification, l’attribution de permissions et la suppression exigent `write:account`. Les permissions OAuth2/OIDC proviennent du jeton courant. En mode JWT local, elles sont conservées sur le compte, et toute modification prend effet dès la requête suivante.
+
+Les réponses incluent les mêmes résumés de portefeuilles que les sélecteurs du tableau de bord. Pour le détail d’un portefeuille, interrogez sa route par identifiant.
+
+## Connexions locales {#local-logins}
+
+Avec `auth_provider = "jwt"`, ouvrez l’annuaire des comptes dans le tableau de bord pour gérer la connexion d’un utilisateur. Les opérations correspondantes sont aussi disponibles par API.
+
+- `GET /v1/accounts/{id}/login` indique le nom d’utilisateur, si la connexion est activée et si un mot de passe a été défini.
+- `POST /v1/accounts/{id}/login` attribue un nom d’utilisateur et émet un code d’activation à usage unique.
+- `PUT /v1/accounts/{id}/login` active ou désactive la connexion par mot de passe avec `{"enabled": true}` ou `{"enabled": false}`.
+- `POST /v1/accounts/{id}/login/reset` émet un code de réinitialisation pour un autre compte.
+
+La lecture exige `read:account` et les modifications exigent `write:account`. Les codes sont affichés une seule fois et expirent après 30 minutes. Communiquez le code en privé au titulaire. Celui-ci envoie `code`, `new_password` et, s’il le souhaite, `display_name` à `POST /v1/auth/reset-password`. Il peut ensuite se connecter avec son nom d’utilisateur.
+
+Un utilisateur connecté modifie son mot de passe dans les paramètres ou avec `POST /v1/auth/change-password`. Un changement ou une réinitialisation du mot de passe, comme la désactivation de la connexion, révoque les sessions JWT locales du compte. Les portefeuilles restent accessibles avec ses clés API valides.
+
+En cas de perte de l’accès administrateur, l’exploitant peut exécuter `swissknife recover-local-login <account-id>` avec la configuration de base de données du serveur. La commande réactive la connexion locale existante et émet un code à usage unique pour la page `/reset-password`.

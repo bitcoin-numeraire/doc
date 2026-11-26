@@ -1,0 +1,103 @@
+---
+title: Utilisation
+sidebar_position: 1
+image: /img/social.png
+---
+
+Ce guide explique comment se connecter à une instance SwissKnife, consulter un solde, encaisser ou payer sur Lightning et sur la chaîne Bitcoin, puis automatiser ces opérations avec des clés API.
+
+Ces opérations sont accessibles depuis le tableau de bord et l’API REST. La [référence interactive](https://api.numeraire.tech/docs) décrit les requêtes, les réponses et les permissions de chaque route. En auto-hébergement, remplacez l’URL des exemples par celle de votre instance. L’image tout-en-un écoute par défaut sur le port `3000`.
+
+:::tip
+Les routes `/v1/me` donnent accès au compte authentifié. Les paramètres et clés API appartiennent au compte. Les soldes, factures, paiements, contacts et adresses Bitcoin se trouvent sous `/v1/me/wallets/{wallet_id}/...`.
+:::
+
+## Se connecter {#signing-in}
+
+En mode local, créez le premier compte administrateur avec un nom d’utilisateur et un mot de passe. Vous pourrez ensuite créer des comptes depuis l’annuaire et activer leur connexion locale. Chaque compte possède ses propres portefeuilles. Le même modèle s’applique en mode OAuth2/OIDC.
+
+### Première ouverture du tableau de bord {#first-launch-initial-setup}
+
+Le tableau de bord interroge [`GET /v1/system/setup`](https://api.numeraire.tech/docs#tag/system/GET/v1/system/setup). Deux champs indiquent où reprendre la configuration.
+
+- `welcome_complete` indique que l’étape d’accueil est terminée.
+- `sign_up_complete` indique que le premier compte administrateur existe.
+
+Terminez l’accueil (le tableau de bord appelle [`POST /v1/system/mark-welcome-complete`](https://api.numeraire.tech/docs#tag/system/POST/v1/system/mark-welcome-complete)). Choisissez ensuite un nom d’utilisateur, un mot de passe et, si vous le souhaitez, un nom à afficher. Le mot de passe doit comporter au moins 15 caractères et tenir dans 1 024 octets en UTF-8.
+
+```bash
+# Créer le premier compte administrateur en mode JWT local
+curl -X POST https://your-instance:3000/v1/auth/sign-up \
+  -H 'Content-Type: application/json' \
+  -d '{ "username": "admin", "display_name": "Alice", "password": "<your-admin-password>" }'
+# => { "token": "<jwt>" }
+```
+
+:::note
+Cette inscription concerne le fournisseur `JWT`. En mode OAuth2/OIDC, le tableau de bord vous redirige vers votre fournisseur OpenID pour la connexion. Consultez le guide d’[authentification](../configuration/authentication.mdx).
+:::
+
+### Connexions suivantes {#subsequent-logins}
+
+Utilisez votre nom d’utilisateur et votre mot de passe pour obtenir un JWT.
+
+```bash
+curl -X POST https://your-instance:3000/v1/auth/sign-in \
+  -H 'Content-Type: application/json' \
+  -d '{ "username": "admin", "password": "<your-admin-password>" }'
+# => { "token": "<jwt>" }
+```
+
+Transmettez le jeton obtenu dans l’en-tête `Authorization` avec le préfixe `Bearer`.
+
+```bash
+curl https://your-instance:3000/v1/me \
+  -H 'Authorization: Bearer <jwt>'
+```
+
+Le premier compte local dispose de toutes les permissions administratives. Pour connecter une application, créez une [clé API](./api-keys.mdx) que vous pourrez révoquer séparément et limitez ses permissions aux besoins de l’application.
+
+Pour un autre compte local, l’administrateur active la connexion et transmet un code à usage unique au titulaire. Celui-ci choisit son mot de passe sur la page d’activation, puis se connecte avec le nom d’utilisateur attribué. Consultez l’[administration des comptes](./accounts.mdx) pour les activations et les réinitialisations.
+
+## Consulter son solde {#checking-your-balance}
+
+Récupérez d’abord votre compte et choisissez un portefeuille dans la liste.
+
+- [`GET /v1/me`](https://api.numeraire.tech/docs#tag/me/GET/v1/me) renvoie le profil du compte et un résumé de ses portefeuilles.
+- [`PUT /v1/me`](https://api.numeraire.tech/docs#tag/me/PUT/v1/me) modifie le nom affiché du compte.
+- [`GET /v1/me/wallets`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/wallets) liste les portefeuilles du compte.
+- [`GET /v1/me/wallets/{wallet_id}/balance`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/wallets/{wallet_id}/balance) détaille le solde du portefeuille sélectionné.
+
+```bash
+curl https://your-instance:3000/v1/me/wallets \
+  -H 'Authorization: Bearer <jwt>'
+
+curl https://your-instance:3000/v1/me/wallets/<wallet-id>/balance \
+  -H 'Authorization: Bearer <jwt>'
+```
+
+Le résumé d’un portefeuille contient son actif et ses soldes. Pour obtenir ses paiements, factures, adresses ou contacts, consultez le portefeuille par identifiant ou sa route dédiée.
+
+Les montants en BTC natifs sont exprimés en millisatoshis (`msat`).
+
+| Champ | Signification |
+| --- | --- |
+| `available_msat` | Montant disponible pour un paiement. |
+| `reserved_msat` | Montant réservé pour les paiements sortants en attente. |
+| `received_msat` | Total reçu. |
+| `sent_msat` | Total des paiements sortants réglés. |
+| `fees_paid_msat` | Total des frais de routage et de réseau payés. |
+
+Les routes `/v1/me` vérifient l’identité du compte et l’appartenance du portefeuille. Les permissions administratives sont indépendantes de cet accès.
+
+Le sélecteur dans l’en-tête détermine le portefeuille actif pour toutes les pages concernées. Le tableau de bord charge la liste complète des portefeuilles et conserve votre sélection dans la préférence `active_wallet_id`.
+
+## Pour aller plus loin {#where-to-go-next}
+
+- [Paiements](./payments.mdx) pour recevoir, envoyer, estimer les frais et gérer les adresses Bitcoin.
+- [Événements](./events.mdx) pour suivre les règlements et reprendre un flux interrompu.
+- [Administration des comptes](./accounts.mdx) pour gérer les comptes et leurs permissions.
+- [Clés API](./api-keys.mdx) pour connecter vos applications.
+- [Référence REST](https://api.numeraire.tech/docs) pour essayer les routes de l’API.
+- [Configuration](../configuration/index.mdx) pour connecter un fournisseur de liquidité et configurer le portefeuille Bitcoin.
+- [Autorisations](../configuration/authorization.mdx) pour comprendre le modèle de permissions.

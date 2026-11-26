@@ -1,0 +1,53 @@
+---
+title: Clés API
+sidebar_position: 5
+image: /img/social.png
+---
+
+Créez une clé API pour connecter une application. Chaque clé permet d’agir sur les ressources de son compte sous `/v1/me`. Son tableau `permissions` accorde des droits administratifs supplémentaires. Vous pouvez révoquer chaque clé séparément.
+
+- [`POST /v1/me/api-keys`](https://api.numeraire.tech/docs#tag/me/POST/v1/me/api-keys) crée une clé pour votre compte.
+- [`GET /v1/me/api-keys`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/api-keys) et [`GET /v1/me/api-keys/{id}`](https://api.numeraire.tech/docs#tag/me/GET/v1/me/api-keys/{id}) affichent vos clés ou les détails d’une clé.
+- [`DELETE /v1/me/api-keys`](https://api.numeraire.tech/docs#tag/me/DELETE/v1/me/api-keys) et [`DELETE /v1/me/api-keys/{id}`](https://api.numeraire.tech/docs#tag/me/DELETE/v1/me/api-keys/{id}) révoquent des clés.
+
+```bash
+curl -X POST https://your-instance:3000/v1/me/api-keys \
+  -H 'Authorization: Bearer <jwt>' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "payments-bot",
+    "permissions": [],
+    "expiry": 2592000
+  }'
+```
+
+Renseignez `name` et `permissions`. Vous pouvez ajouter une `description` et une durée de validité `expiry` en secondes. Les permissions administratives d’une clé doivent être comprises dans celles de son créateur. Une liste vide donne toujours accès aux opérations du compte sous `/v1/me`. Pour une opération sur un portefeuille, précisez son identifiant dans le chemin. **Copiez la valeur complète de `key` à la création.** Elle est affichée une seule fois.
+
+| Permission | Accès administratif supplémentaire |
+| --- | --- |
+| `read:account` | Lister les comptes et consulter leurs informations. |
+| `write:account` | Créer, modifier ou supprimer des comptes et gérer leurs permissions. |
+| `read:wallet` | Consulter les portefeuilles et les soldes de plusieurs comptes. |
+| `write:wallet` | Créer et gérer les portefeuilles de plusieurs comptes. |
+| `read:transaction` | Consulter les factures et les paiements. |
+| `write:transaction` | Émettre des factures, envoyer des paiements et supprimer des enregistrements de transactions. |
+| `read:ln_address` | Consulter les adresses Lightning. |
+| `write:ln_address` | Gérer les adresses Lightning. |
+| `read:ln_node` | Consulter les informations du nœud Lightning. |
+| `write:ln_node` | Exécuter des opérations sur le nœud Lightning. |
+| `read:btc_address` | Consulter les adresses Bitcoin sur la chaîne. |
+| `write:btc_address` | Créer et supprimer des adresses Bitcoin sur la chaîne. |
+| `read:api_key` | Lister et consulter les clés API. |
+| `write:api_key` | Créer et révoquer des clés API. |
+
+Transmettez la clé dans l’en-tête `Api-Key` à chaque requête.
+
+```bash
+curl https://your-instance:3000/v1/me/wallets/<wallet-id>/payments \
+  -H 'Api-Key: YOUR_API_KEY' \
+  -H 'Content-Type: application/json'
+```
+
+:::tip
+Envoyez les corps de requête au format JSON avec l’en-tête `Content-Type: application/json`. Le [guide d’intégration](/developers/api-keys.mdx) montre comment connecter votre application et lire ses premiers résultats.
+:::

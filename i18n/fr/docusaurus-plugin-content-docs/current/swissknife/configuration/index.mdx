@@ -1,0 +1,162 @@
+---
+title: Configuration
+sidebar_position: 1
+image: /img/social.png
+---
+
+SwissKnife lit ses valeurs par défaut dans `config/default.toml`. Il accepte les fichiers TOML, YAML et JSON. Les sources suivantes sont classées par ordre de priorité décroissante.
+
+1. Les variables d’environnement préfixées par `SWISSKNIFE_` remplacent les valeurs correspondantes. Utilisez deux traits de soulignement pour les clés imbriquées. Par exemple, `SWISSKNIFE_DATABASE__URL` remplace `database.url`.
+2. Le fichier du dossier `config` correspondant à `RUN_MODE`, par exemple `development.toml` ou `production.toml`. Le mode par défaut est `development`.
+3. Le fichier de configuration par défaut.
+
+Utilisez `.env.example` pour préparer votre propre `.env`. Sur Kubernetes, fournissez les paramètres ordinaires dans une `ConfigMap` et les valeurs sensibles dans des Secrets.
+
+## Référence des paramètres {#configuration-values}
+
+### Application {#app}
+
+Ces clés se placent à la racine du fichier.
+
+| Clé | Fonction |
+| --- | --- |
+| `invoice_expiry` | Durée de validité des factures émises. |
+| `domain` | Domaine de l’application. |
+| `host` | URL publique de base de l’API. |
+| `bitcoin_address_type` | Type de script Bitcoin (`p2pkh`, `p2sh`, `p2wpkh` ou `p2tr`). Valeur par défaut : `p2wpkh`. |
+| `ln_provider` | Fournisseur de liquidité pour Lightning et Bitcoin sur la chaîne. |
+| `auth_provider` | Fournisseur d’authentification. |
+| `dashboard_dir` | Répertoire des fichiers statiques du tableau de bord intégré. |
+
+SwissKnife construit les URL de callback LNURL-pay et de vérification LUD-21 à partir de `host`. L’adresse doit donc être accessible aux portefeuilles payeurs et aux applications qui vérifient les règlements.
+
+### Serveur web {#web-server}
+
+| Clé | Fonction |
+| --- | --- |
+| `web.addr` | Adresse et port d’écoute. |
+| `web.request_timeout` | Délai maximal de traitement d’une requête. |
+
+### Core Lightning avec gRPC {#core-lightning-provider-grpc}
+
+Paramètres de connexion à l’[API gRPC de Core Lightning](https://docs.corelightning.org/docs/grpc).
+
+| Clé | Fonction |
+| --- | --- |
+| `cln_grpc_config.endpoint` | Adresse gRPC du nœud. |
+| `cln_grpc_config.certs_dir` | Répertoire des certificats Core Lightning. |
+| `cln_grpc_config.maxfee` | Plafond absolu facultatif des frais de routage, en msat. À défaut, `xpay` utilise le plus élevé de 1 % du montant et de 5 000 msat. |
+| `cln_grpc_config.payment_timeout` | Délai maximal d’un paiement. |
+
+### Core Lightning avec REST {#core-lightning-provider-rest}
+
+La connexion à l’[API REST de Core Lightning](https://docs.corelightning.org/docs/rest) utilise une rune. SwissKnife suit les événements du nœud via WebSocket.
+
+| Clé | Fonction |
+| --- | --- |
+| `cln_rest_config.endpoint` | Adresse de l’API REST. |
+| `cln_rest_config.ca_cert_path` | Chemin du certificat de l’autorité de certification TLS pour HTTPS. |
+| `cln_rest_config.rune` | Rune délivrée par Core Lightning. |
+| `cln_rest_config.connect_timeout` | Délai maximal de connexion. |
+| `cln_rest_config.timeout` | Délai maximal d’une requête. |
+| `cln_rest_config.connection_verbose` | Journalisation détaillée de la connexion. |
+| `cln_rest_config.accept_invalid_certs` | Accepter les certificats non valides. |
+| `cln_rest_config.accept_invalid_hostnames` | Accepter un nom d’hôte qui ne correspond pas au certificat. |
+| `cln_rest_config.maxfee` | Plafond absolu facultatif des frais de routage, en msat. À défaut, `xpay` utilise le plus élevé de 1 % du montant et de 5 000 msat. |
+| `cln_rest_config.payment_timeout` | Délai maximal d’un paiement. |
+
+:::tip
+Fournissez la rune via `SWISSKNIFE_CLN_REST_CONFIG__RUNE` pour garder cette valeur hors du fichier de configuration.
+:::
+
+### LND avec gRPC {#lnd-provider-grpc}
+
+Paramètres de connexion à l’[API gRPC de LND](https://lightning.engineering/api-docs/api/lnd/).
+
+| Clé | Fonction |
+| --- | --- |
+| `lnd_grpc_config.endpoint` | Adresse gRPC du nœud. |
+| `lnd_grpc_config.cert_path` | Chemin du certificat TLS. |
+| `lnd_grpc_config.macaroon_path` | Chemin du macaroon d’administration. |
+| `lnd_grpc_config.fee_limit_msat` | Plafond des frais par paiement, en msat. |
+| `lnd_grpc_config.payment_timeout` | Délai maximal d’un paiement. |
+| `lnd_grpc_config.reorg_buffer_blocks` | Nombre de blocs à remonter lors de la reprise de la synchronisation pour tenir compte d’une réorganisation de la chaîne. |
+
+### LND avec REST {#lnd-provider-rest}
+
+Paramètres de connexion à l’[API REST de LND](https://lightning.engineering/api-docs/api/lnd/).
+
+| Clé | Fonction |
+| --- | --- |
+| `lnd_rest_config.host` | Hôte et port de l’API REST. |
+| `lnd_rest_config.macaroon_path` | Chemin du macaroon d’administration. |
+| `lnd_rest_config.ca_cert_path` | Chemin du certificat TLS pour HTTPS. |
+| `lnd_rest_config.connect_timeout` | Délai maximal de connexion. |
+| `lnd_rest_config.timeout` | Délai maximal d’une requête. |
+| `lnd_rest_config.connection_verbose` | Journalisation détaillée de la connexion. |
+| `lnd_rest_config.accept_invalid_certs` | Accepter les certificats non valides. |
+| `lnd_rest_config.accept_invalid_hostnames` | Accepter un nom d’hôte qui ne correspond pas au certificat. |
+| `lnd_rest_config.payment_timeout` | Délai maximal d’un paiement. |
+| `lnd_rest_config.fee_limit_msat` | Plafond des frais par paiement, en msat. |
+| `lnd_rest_config.reorg_buffer_blocks` | Nombre de blocs à remonter lors de la reprise de la synchronisation après une réorganisation. |
+
+### Événements de règlement {#client-settlement-events}
+
+| Clé | Fonction |
+| --- | --- |
+| `client_events.retention` | Durée minimale de conservation. La valeur par défaut est `30d`. La valeur `0s` désactive la purge. |
+| `client_events.cleanup_interval` | Intervalle entre les purges. La valeur par défaut est `1h`. La valeur `0s` désactive la tâche de nettoyage. |
+
+Le flux authentifié `/v1/me/events` est activé par défaut. Si vous utilisez un proxy inverse, autorisez les réponses en continu sans mise en mémoire tampon. Le guide des [événements](../usage/events.mdx) décrit l’abonnement et la reprise du flux.
+
+### Journalisation {#logging}
+
+| Clé | Fonction |
+| --- | --- |
+| `logging.format` | Format des journaux. |
+| `logging.ansi` | Affichage des couleurs ANSI. |
+| `logging.line_number` | Inclusion des numéros de ligne. |
+| `logging.thread_ids` | Inclusion des identifiants des threads. |
+| `logging.thread_names` | Inclusion des noms des threads. |
+| `logging.level` | Niveau de journalisation. |
+| `logging.filter` | Règles de filtrage. |
+| `logging.file` | Écriture des journaux dans un fichier. |
+
+### Authentification {#authentication}
+
+Le choix de `auth_provider` détermine la section à renseigner.
+
+| Clé | Fonction |
+| --- | --- |
+| `oauth2.domain` | URL de base de l’émetteur OpenID, par exemple `auth.numeraire.tech`. |
+| `oauth2.audience` | Audience OAuth2 attendue. |
+| `oauth2.jwks_refresh_interval` | Intervalle de mise à jour des clés publiques JWKS. |
+| `oauth2.leeway` | Tolérance temporelle lors de la vérification des jetons. |
+| `jwt.token_expiry` | Durée de validité d’un jeton JWT. |
+| `jwt.secret` | Clé secrète du fournisseur JWT local. |
+
+:::note
+Avec `jwt`, le premier administrateur choisit son identifiant et son mot de passe à l’inscription. Il peut ensuite activer la connexion d’autres comptes. Les mots de passe sont conservés sous forme d’empreintes Argon2id. Configurez `jwt.secret` et, si nécessaire, `jwt.token_expiry`. Le guide d’[authentification](./authentication.mdx) détaille la mise en service et les réinitialisations.
+:::
+
+:::tip
+Fournissez la clé secrète dans `SWISSKNIFE_JWT__SECRET`.
+:::
+
+### Base de données {#database}
+
+| Clé | Fonction |
+| --- | --- |
+| `database.url` | Chaîne de connexion obligatoire à PostgreSQL ou à SQLite. |
+| `database.max_lifetime` | Durée de vie maximale d’une connexion. |
+| `database.idle_timeout` | Délai d’inactivité avant la fermeture d’une connexion. |
+| `database.max_connections` | Nombre maximal de connexions. |
+| `database.min_connections` | Nombre minimal de connexions. |
+| `database.acquire_timeout` | Délai maximal d’obtention d’une connexion du pool. |
+| `database.connect_timeout` | Délai maximal d’ouverture d’une connexion. |
+| `database.sqlx_logging` | Activation des journaux SQLx. |
+| `database.busy_timeout` | Durée pendant laquelle SQLite attend la libération du verrou d’écriture. PostgreSQL ignore ce paramètre. |
+
+:::tip
+La variable d’environnement `SWISSKNIFE_DATABASE__URL` permet de fournir la chaîne de connexion.
+:::
