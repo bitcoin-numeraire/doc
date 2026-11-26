@@ -1,4 +1,5 @@
 import Link from '@docusaurus/Link';
+import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import styles from './styles.module.css';
 
 const guides = [
@@ -20,6 +21,7 @@ const guides = [
 ];
 
 export default function HomepageCards() {
+  const { siteConfig } = useDocusaurusContext();
   return (
     <section className={styles.guides} aria-label="Product guides">
       <ul className={styles.grid}>
@@ -34,7 +36,7 @@ export default function HomepageCards() {
           </li>
         ))}
       </ul>
-      <a className={styles.support} href="https://numeraire.tech/contact">
+      <a className={styles.support} href={`${siteConfig.customFields.websiteOrigin}/contact`}>
         Contact Numeraire support <span aria-hidden="true">↗</span>
       </a>
     </section>

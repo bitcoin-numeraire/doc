@@ -3,7 +3,10 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 import {themes as prismThemes} from 'prism-react-renderer';
 
+const websiteOrigin = new URL(process.env.NUMERAIRE_WEBSITE_ORIGIN || 'https://numeraire.tech').origin;
+
 const config: Config = {
+  customFields: {websiteOrigin},
   title: 'Numeraire Docs',
   tagline: 'Numeraire Documentation Portal',
   favicon: 'img/favicon.svg',
@@ -105,7 +108,7 @@ const config: Config = {
           label: "Dashboard",
         },
         {
-          href: 'https://numeraire.tech',
+          href: websiteOrigin,
           position: 'right',
           label: 'Numeraire.tech',
         },
@@ -119,7 +122,7 @@ const config: Config = {
           items: [
             {
               label: 'Numeraire Homepage',
-              href: 'https://numeraire.tech',
+              href: websiteOrigin,
             },
             {
               label: 'Numeraire Dashboard',
