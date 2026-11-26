@@ -1,0 +1,13 @@
+---
+title: Développer avec Numeraire
+sidebar_position: 1
+image: /img/social.png
+---
+
+L’API REST de SwissKnife permet à une application de se connecter à un [Numeraire Account](../account/index.mdx) ou à une [instance auto-hébergée](../swissknife/index.mdx).
+
+## Accéder à l’API
+
+[Créez une clé API et listez vos portefeuilles](./api-keys.mdx). Chaque appel portant sur un portefeuille précise son identifiant, par exemple `/v1/me/wallets/{wallet_id}/payments`. Les routes administratives de gestion des adresses Bitcoin utilisent les permissions `read:btc_address` et `write:btc_address`.
+
+La [référence REST](https://api.numeraire.tech/docs) décrit les paramètres et les réponses. Pour signaler un problème ou proposer une intégration, ouvrez un [ticket SwissKnife](https://github.com/bitcoin-numeraire/swissknife/issues).

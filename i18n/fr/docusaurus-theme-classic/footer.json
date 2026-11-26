@@ -1,0 +1,29 @@
+{
+  "link.title.Links": {
+    "message": "Liens"
+  },
+  "link.title.Community": {
+    "message": "Communauté"
+  },
+  "link.title.More": {
+    "message": "Autres ressources"
+  },
+  "link.item.label.Numeraire Homepage": {
+    "message": "Site de Numeraire"
+  },
+  "link.item.label.Numeraire Dashboard": {
+    "message": "Tableau de bord Numeraire"
+  },
+  "link.item.label.API Reference": {
+    "message": "Référence de l’API"
+  },
+  "link.item.label.Lightning Node": {
+    "message": "Nœud Lightning"
+  },
+  "link.item.label.SwissKnife releases": {
+    "message": "Versions de SwissKnife"
+  },
+  "link.item.label.Contribute to our docs": {
+    "message": "Contribuer à la documentation"
+  }
+}

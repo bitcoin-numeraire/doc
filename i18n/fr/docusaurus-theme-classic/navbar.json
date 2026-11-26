@@ -1,0 +1,17 @@
+{
+  "item.label.Account": {
+    "message": "Compte"
+  },
+  "item.label.Developers": {
+    "message": "Développeurs"
+  },
+  "item.label.API Reference": {
+    "message": "Référence de l’API"
+  },
+  "item.label.Dashboard": {
+    "message": "Tableau de bord"
+  },
+  "item.label.Resources": {
+    "message": "Ressources"
+  }
+}

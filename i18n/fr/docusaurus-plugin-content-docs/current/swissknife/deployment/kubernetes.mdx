@@ -1,0 +1,16 @@
+---
+title: Kubernetes
+sidebar_position: 2
+image: /img/social.png
+---
+
+## Installer les charts Helm
+
+Les [charts de Numeraire](https://github.com/bitcoin-numeraire/k8s-infra) décrivent une infrastructure comprenant un nœud Bitcoin, un nœud Core Lightning, PostgreSQL, le réseau, la supervision et SwissKnife. Vous pouvez adapter ces manifests à votre environnement dans un fork.
+
+- Le chart [`swissknife`](https://github.com/bitcoin-numeraire/k8s-infra/tree/main/charts/swissknife) déploie le serveur Rust avec l’image `bitcoinnumeraire/swissknife-server` sur le port `3000`.
+- Le chart [`dashboard`](https://github.com/bitcoin-numeraire/k8s-infra/tree/main/charts/dashboard) déploie le tableau de bord Next.js avec l’image `bitcoinnumeraire/swissknife-dashboard` sur le port `8080`.
+
+## Configurer la version déployée
+
+Épinglez des versions compatibles et immuables des deux images, puis renseignez les champs `version` et `appVersion` des charts. La configuration publique du tableau de bord est intégrée à l’image au moment de la compilation. Pour changer l’origine de l’API ou le fournisseur d’identité, suivez le [guide de compilation du tableau de bord](./docker.mdx#configure-the-dashboard-at-build-time).

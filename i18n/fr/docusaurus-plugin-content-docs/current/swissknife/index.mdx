@@ -1,0 +1,26 @@
+---
+title: Numeraire SwissKnife
+sidebar_position: 1
+image: /img/social.png
+---
+
+SwissKnife orchestre les portefeuilles et les paiements Bitcoin. Sur votre propre instance, vous choisissez le nœud Lightning, administrez les comptes et gérez les sauvegardes. Le service hébergé [Numeraire Account](../account/index.mdx) utilise le même logiciel.
+
+## Portefeuilles et paiements
+
+- Créez plusieurs portefeuilles par compte, chacun associé à un actif. Les paiements entre portefeuilles d’une même instance sont inscrits immédiatement dans son registre interne.
+- Émettez des factures, envoyez et recevez des paiements Lightning, et consultez les estimations et les plafonds de frais.
+- Gérez les adresses et préparez vos transactions Bitcoin sur la chaîne avec un nœud Core Lightning ou LND.
+- Proposez des adresses Lightning (`utilisateur@votre-domaine`), LNURL, la [vérification des factures LUD-21](/swissknife/usage/payments.mdx#lud-21-invoice-verification), NIP-05 et les *zaps* Nostr.
+
+## Comptes et intégrations
+
+Le tableau de bord offre des contacts, la recherche dans les transactions et un suivi en direct des règlements. Une application serveur peut utiliser les [clés API du compte](../developers/api-keys.mdx), l’API REST et les événements SSE.
+
+L’instance accepte l’authentification locale par JWT ou OAuth2/OIDC avec découverte OpenID Connect et récupération des clés publiques. Les rôles et les permissions déterminent les opérations administratives autorisées.
+
+## Connecter un nœud Lightning
+
+SwissKnife se connecte à [Core Lightning](https://corelightning.org/) ou à [LND](https://github.com/lightningnetwork/lnd), via gRPC ou REST. Les valeurs de configuration correspondantes sont `cln_grpc`, `cln_rest`, `lnd_grpc` et `lnd_rest`. En auto-hébergement, vous gérez votre nœud et sa liquidité.
+
+[Commencer le déploiement](./getting-started.mdx).

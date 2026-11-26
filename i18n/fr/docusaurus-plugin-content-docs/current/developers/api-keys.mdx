@@ -1,0 +1,43 @@
+---
+title: Clés API
+sidebar_position: 2
+image: /img/social.png
+---
+
+Une clé API de compte relie votre application serveur à SwissKnife. Elle permet de consulter les portefeuilles du compte et d’y effectuer des opérations, y compris l’envoi de paiements. L’identifiant fourni dans la requête désigne le portefeuille utilisé. Des permissions supplémentaires donnent accès aux opérations administratives sur d’autres comptes.
+
+## Créer une clé de compte
+
+1. Connectez-vous à la [page des clés API](https://app.numeraire.tech/build/api-keys). Sur une instance auto-hébergée, ouvrez **Build → API Keys**.
+2. Sous **Personal access tokens**, sélectionnez **New**, nommez le jeton et choisissez sa date d’expiration.
+3. Laissez les permissions administratives vides pour cet exemple. Sélectionnez **Generate token**, copiez le secret avant de fermer le panneau et enregistrez-le dans le gestionnaire de secrets de votre serveur.
+
+## Lister les portefeuilles
+
+Rendez le secret accessible dans votre terminal via la variable `SWISSKNIFE_API_KEY`. L’exemple utilise l’API hébergée. Si vous exploitez SwissKnife, remplacez l’URL par celle de votre instance.
+
+```bash
+SWISSKNIFE_URL=https://api.numeraire.tech
+
+curl --fail-with-body --silent --show-error \
+  -H "Api-Key: ${SWISSKNIFE_API_KEY}" \
+  "${SWISSKNIFE_URL}/v1/me/wallets"
+```
+
+La réponse est un tableau JSON. Copiez le champ `id` du portefeuille à utiliser. Un tableau vide indique que le compte ne possède encore aucun portefeuille.
+
+## Lire les paiements d’un portefeuille
+
+Affectez l’identifiant choisi à `WALLET_ID`, puis demandez l’historique des paiements sortants.
+
+```bash
+WALLET_ID=YOUR_WALLET_ID
+
+curl --fail-with-body --silent --show-error \
+  -H "Api-Key: ${SWISSKNIFE_API_KEY}" \
+  "${SWISSKNIFE_URL}/v1/me/wallets/${WALLET_ID}/payments"
+```
+
+Un portefeuille sans paiement sortant renvoie `[]`. Pour les paiements entrants, consultez les [factures du portefeuille](/swissknife/usage/payments.mdx). Les types de réponses figurent dans la [référence REST](https://api.numeraire.tech/docs).
+
+Pour désactiver cette intégration, ouvrez le menu du jeton sous **Personal access tokens**, sélectionnez **Revoke** et confirmez. Les autres jetons du compte restent utilisables. Le [guide des permissions des clés API](/swissknife/usage/api-keys.mdx) décrit les droits administratifs et les routes de gestion des clés.

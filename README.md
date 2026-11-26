@@ -38,6 +38,8 @@ This command generates static content into the `build` directory, which can be s
 
 Set `NUMERAIRE_WEBSITE_ORIGIN` when building the docs to point the navigation and homepage support links to a website preview, for example `http://127.0.0.1:4385`. In the Astro build, set `PUBLIC_DOCS_ORIGIN` to the documentation preview origin. Omit both settings to use the published domains.
 
+English guides use the root paths. French guides use the same paths under `/fr`. Add a translation under `i18n/fr/docusaurus-plugin-content-docs/current/` with the same relative filename as its English source. When linking between translated and English guides, use a Markdown file path relative to the docs root (for example `/developers/api-keys.mdx`) so Docusaurus can resolve either source. While a guide awaits translation, the French edition labels its English text. Run `yarn start --locale fr` to preview French or `yarn build` to check both editions.
+
 ## Dependency audit
 
 Run `yarn audit` to check direct and transitive dependencies for security advisories.

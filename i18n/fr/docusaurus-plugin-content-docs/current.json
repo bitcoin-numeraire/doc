@@ -1,0 +1,29 @@
+{
+  "version.label": {
+    "message": "Version à venir"
+  },
+  "sidebar.introSidebar.link.Contact Us": {
+    "message": "Nous contacter"
+  },
+  "sidebar.accountSidebar.link.Contact Us": {
+    "message": "Nous contacter"
+  },
+  "sidebar.developersSidebar.link.API Reference": {
+    "message": "Référence de l’API"
+  },
+  "sidebar.developersSidebar.link.Contact Us": {
+    "message": "Nous contacter"
+  },
+  "sidebar.swissknifeSidebar.category.Deployment": {
+    "message": "Déploiement"
+  },
+  "sidebar.swissknifeSidebar.category.Usage": {
+    "message": "Utilisation"
+  },
+  "sidebar.swissknifeSidebar.link.API Reference": {
+    "message": "Référence de l’API"
+  },
+  "sidebar.swissknifeSidebar.link.Contact Us": {
+    "message": "Nous contacter"
+  }
+}

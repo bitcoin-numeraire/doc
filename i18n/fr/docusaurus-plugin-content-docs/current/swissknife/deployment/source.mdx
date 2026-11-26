@@ -1,0 +1,39 @@
+---
+title: Compiler depuis les sources
+sidebar_position: 3
+image: /img/social.png
+---
+
+Partez d’une version publiée de SwissKnife. Les commandes ci-dessous utilisent l’étiquette `v0.3.3`.
+
+```bash
+git clone https://github.com/bitcoin-numeraire/swissknife.git
+cd swissknife
+git checkout v0.3.3
+```
+
+## Compiler avec Cargo
+
+Installez la version de Rust indiquée dans `rust-toolchain.toml` et le compilateur Protocol Buffers (`protoc`), puis lancez la compilation.
+
+```bash
+cargo build --locked --release
+```
+
+Configurez la base de données, le fournisseur Lightning et l’authentification avant de lancer `target/release/swissknife`. Le serveur applique les migrations en attente au démarrage. Si vous compilez uniquement le serveur sans installer de tableau de bord statique, définissez `SWISSKNIFE_DASHBOARD_DIR=""`.
+
+## Construire les images Docker
+
+Avant de construire un tableau de bord, configurez l’URL publique de l’API et l’authentification dans `dashboard/.env.production`. Les variables `NEXT_PUBLIC_*` sont intégrées au code distribué au navigateur. Le profil du dépôt utilise le service Auth0 hébergé de Numeraire. Pour une installation combinée avec JWT local, définissez `NEXT_PUBLIC_AUTH_METHOD=jwt` et laissez `NEXT_PUBLIC_SERVER_URL` vide.
+
+```bash
+make build-docker            # Serveur et tableau de bord statique
+make build-docker-server     # Serveur seul
+make build-docker-dashboard  # Tableau de bord Next.js autonome
+```
+
+Les images locales portent respectivement les noms `swissknife:latest`, `swissknife-server:latest` et `swissknife-dashboard:latest`. Le [guide Docker](./docker.mdx) détaille la configuration, le stockage persistant et le montage des identifiants. Le nœud Lightning est un service séparé.
+
+## Développer le tableau de bord
+
+Utilisez Node 24.x à partir de la version 24.22.3 et la version de Yarn fixée dans `dashboard/package.json` via Corepack. Le [README du tableau de bord](https://github.com/bitcoin-numeraire/swissknife/blob/v0.3.3/dashboard/README.md) décrit la configuration et les compilations autonome et statique.
